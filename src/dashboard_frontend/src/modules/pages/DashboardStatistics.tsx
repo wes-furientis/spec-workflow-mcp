@@ -1,13 +1,23 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useApi } from '../api/api';
 import { useWs } from '../ws/WebSocketProvider';
+import { useProjects } from '../projects/ProjectProvider';
+
+interface ArchetypeInfo {
+  name: string;
+  displayName: string;
+  description: string;
+}
 
 function Content() {
   const { t } = useTranslation();
   const { initial } = useWs();
   const { specs, approvals, reloadAll } = useApi();
   const { info } = useApi();
+  const { currentProject } = useProjects();
+  const [archetypeInfo, setArchetypeInfo] = useState<ArchetypeInfo | null>(null);
 
   useEffect(() => {
     reloadAll();
@@ -15,6 +25,30 @@ function Content() {
   useEffect(() => {
     if (!initial) reloadAll();
   }, [initial, reloadAll]);
+
+  // Fetch archetype info when current project has an archetype
+  useEffect(() => {
+    async function fetchArchetypeInfo() {
+      if (!currentProject?.archetype) {
+        setArchetypeInfo(null);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/archetypes');
+        if (response.ok) {
+          const archetypes: ArchetypeInfo[] = await response.json();
+          const matchingArchetype = archetypes.find(a => a.name === currentProject.archetype);
+          setArchetypeInfo(matchingArchetype || null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch archetype info:', error);
+        setArchetypeInfo(null);
+      }
+    }
+
+    fetchArchetypeInfo();
+  }, [currentProject?.archetype]);
 
   const totalSpecs = specs.length;
   const totalTasks = specs.reduce((acc, s) => acc + (s.taskProgress?.total || 0), 0);
@@ -37,6 +71,29 @@ function Content() {
             <p className="text-gray-600 dark:text-gray-400">
               {t('projectDescription')}
             </p>
+            {/* Archetype Display */}
+            <div className="mt-3 flex items-center gap-2">
+              {archetypeInfo ? (
+                <>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
+                    {archetypeInfo.displayName}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {archetypeInfo.description}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                  {t('archetype.noArchetype', 'No archetype set')}
+                </span>
+              )}
+              <Link
+                to="/settings"
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline ml-2"
+              >
+                {archetypeInfo ? t('archetype.change', 'Change') : t('archetype.configure', 'Configure')}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

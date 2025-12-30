@@ -10,6 +10,7 @@ export interface Project {
   projectName: string;
   projectPath: string;
   instances: ProjectInstance[];
+  archetype?: string;
 }
 
 interface ProjectContextType {

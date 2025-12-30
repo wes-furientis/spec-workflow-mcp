@@ -33,4 +33,7 @@ export interface MDXEditorWrapperProps {
 
   /** Height configuration */
   height?: 'auto' | 'full' | string;
+
+  /** Whether content is currently being loaded (shows loading spinner) */
+  loading?: boolean;
 }

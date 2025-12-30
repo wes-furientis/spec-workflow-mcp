@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { PathUtils } from './path-utils.js';
 import { ImplementationLogMigrator } from './implementation-log-migrator.js';
 import { getGlobalDir } from './global-dir.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -16,12 +17,12 @@ export class WorkspaceInitializer {
     this.version = version;
   }
 
-  async initializeWorkspace(): Promise<void> {
+  async initializeWorkspace(archetype?: string): Promise<void> {
     // Create all necessary directories
     await this.initializeDirectories();
 
-    // Copy template files
-    await this.initializeTemplates();
+    // Copy template files (filtered by archetype if specified)
+    await this.initializeTemplates(archetype);
 
     // Create user templates README
     await this.createUserTemplatesReadme();
@@ -48,19 +49,45 @@ export class WorkspaceInitializer {
     }
   }
   
-  private async initializeTemplates(): Promise<void> {
+  private async initializeTemplates(archetype?: string): Promise<void> {
     const templatesDir = join(PathUtils.getWorkflowRoot(this.projectPath), 'templates');
-    
-    const templates = [
-      'requirements-template',
-      'design-template',
-      'tasks-template',
+
+    // Steering templates are always copied (not archetype-specific)
+    const steeringTemplates = [
       'product-template',
       'tech-template',
       'structure-template'
     ];
-    
-    for (const template of templates) {
+
+    // Spec templates may be filtered by archetype
+    const allSpecTemplates = [
+      'requirements-template',
+      'design-template',
+      'tasks-template'
+    ];
+
+    // Determine which spec templates to copy based on archetype
+    let specTemplatesToCopy: string[];
+
+    if (archetype) {
+      // Get enabled templates for this archetype
+      const enabledTemplates = await archetypeRegistry.getTemplatesFor(archetype);
+      // Filter spec templates based on archetype configuration
+      // enabledTemplates returns names like 'requirements', 'design', 'tasks'
+      specTemplatesToCopy = allSpecTemplates.filter(template => {
+        // Extract template type from 'requirements-template' -> 'requirements'
+        const templateType = template.replace('-template', '');
+        return enabledTemplates.includes(templateType);
+      });
+    } else {
+      // No archetype specified - copy all templates (backward compatible)
+      specTemplatesToCopy = allSpecTemplates;
+    }
+
+    // Copy all enabled templates
+    const allTemplatesToCopy = [...specTemplatesToCopy, ...steeringTemplates];
+
+    for (const template of allTemplatesToCopy) {
       await this.copyTemplate(template, templatesDir);
     }
   }

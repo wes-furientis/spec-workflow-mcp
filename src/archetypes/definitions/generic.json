@@ -1,0 +1,32 @@
+{
+  "name": "generic",
+  "displayName": "Generic Project",
+  "description": "Default project type suitable for any specification. Includes all templates and standard steering documents.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": ["product", "tech", "structure"],
+    "optional": [],
+    "custom": []
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Follow the standard spec workflow phases",
+      "Document requirements before design",
+      "Break down implementation into manageable tasks",
+      "Consider both technical and product perspectives",
+      "Maintain clear traceability from requirements to tasks"
+    ],
+    "documentationFocus": "Balanced coverage of product vision, technical approach, and project structure",
+    "keyConsiderations": [
+      "What problem is being solved?",
+      "Who are the stakeholders and users?",
+      "What are the technical constraints?",
+      "How will success be measured?",
+      "What are the key risks and mitigations?"
+    ]
+  }
+}

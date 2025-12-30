@@ -1,0 +1,32 @@
+{
+  "name": "greenfield",
+  "displayName": "Greenfield Project",
+  "description": "New software projects starting from scratch. Emphasizes architecture decisions, initial setup, and scaffolding.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": ["product", "tech", "structure"],
+    "optional": [],
+    "custom": []
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Focus on establishing solid architectural foundations",
+      "Document technology choices and their rationale",
+      "Define clear project structure early",
+      "Consider scalability from the start",
+      "Establish coding standards and conventions"
+    ],
+    "documentationFocus": "Architecture decisions, technology rationale, and project scaffolding documentation",
+    "keyConsiderations": [
+      "What frameworks and libraries best fit the requirements?",
+      "How should the codebase be organized?",
+      "What development patterns should be established?",
+      "Are there performance or scalability requirements to consider upfront?",
+      "What testing strategy should be adopted from the start?"
+    ]
+  }
+}

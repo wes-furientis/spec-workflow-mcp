@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   MDXEditor,
   headingsPlugin,
@@ -31,6 +31,163 @@ import { useMDXEditorTheme } from './hooks/useMDXEditorTheme';
 import { MermaidRenderer, isMermaidCode, mermaidCodeBlockDescriptor } from './plugins';
 import type { MDXEditorWrapperProps, EditorMode } from './types';
 import './MDXEditorWrapper.css';
+
+// Error boundary props and state interfaces
+interface MDXEditorErrorBoundaryProps {
+  children: ReactNode;
+  content: string;
+  onRetry?: () => void;
+  onChange?: (content: string) => void;
+  editable?: boolean;
+  className?: string;
+}
+
+interface MDXEditorErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  problematicLine?: number;
+}
+
+/**
+ * Attempts to identify the problematic line in markdown content based on error message
+ */
+function findProblematicLine(content: string, error: Error): number | undefined {
+  const errorMessage = error.message || '';
+
+  // Try to extract line number from common error patterns
+  // Pattern 1: "at line X" or "line X"
+  const lineMatch = errorMessage.match(/(?:at\s+)?line\s+(\d+)/i);
+  if (lineMatch) {
+    return parseInt(lineMatch[1], 10);
+  }
+
+  // Pattern 2: "position X" - convert to line number
+  const positionMatch = errorMessage.match(/position\s+(\d+)/i);
+  if (positionMatch) {
+    const position = parseInt(positionMatch[1], 10);
+    const lines = content.slice(0, position).split('\n');
+    return lines.length;
+  }
+
+  // Pattern 3: Check error stack for mdast/remark references
+  const stackMatch = error.stack?.match(/(\d+):(\d+)/);
+  if (stackMatch) {
+    return parseInt(stackMatch[1], 10);
+  }
+
+  return undefined;
+}
+
+/**
+ * Error boundary specifically for MDXEditor markdown parsing errors.
+ * Falls back to showing raw markdown when parsing fails.
+ */
+class MDXEditorErrorBoundary extends Component<MDXEditorErrorBoundaryProps, MDXEditorErrorBoundaryState> {
+  constructor(props: MDXEditorErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<MDXEditorErrorBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Attempt to find the problematic line
+    const problematicLine = findProblematicLine(this.props.content, error);
+    this.setState({ problematicLine });
+
+    console.error('MDXEditor render error:', error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps: MDXEditorErrorBoundaryProps) {
+    // Reset error state when content changes (user may have fixed the issue)
+    if (prevProps.content !== this.props.content && this.state.hasError) {
+      // Don't auto-reset - let the user explicitly retry
+    }
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: undefined, problematicLine: undefined });
+    this.props.onRetry?.();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      const { content, className, editable, onChange } = this.props;
+      const { error, problematicLine } = this.state;
+      const lines = content.split('\n');
+
+      return (
+        <div className={`mdx-editor-error-fallback flex flex-col ${className || ''}`}>
+          {/* Error message banner */}
+          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-amber-800 dark:text-amber-200 font-medium text-sm">
+                  Render error: {error?.message || 'Unknown parsing error'}. Showing source view.
+                </p>
+                {problematicLine && (
+                  <p className="text-amber-700 dark:text-amber-300 text-xs mt-1">
+                    Issue may be near line {problematicLine}
+                  </p>
+                )}
+                <button
+                  onClick={this.handleRetry}
+                  className="mt-2 px-3 py-1 text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded hover:bg-amber-200 dark:hover:bg-amber-700 transition-colors"
+                >
+                  Try preview again
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Raw markdown display - editable or read-only */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex-1 flex flex-col">
+            <div className="bg-gray-100 dark:bg-gray-800 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+              Source View {editable ? '(edit below to fix)' : '(read-only)'}
+            </div>
+            {editable ? (
+              <textarea
+                value={content}
+                onChange={(e) => onChange?.(e.target.value)}
+                className="flex-1 w-full p-3 font-mono text-sm bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none resize-none min-h-[200px]"
+                spellCheck={false}
+              />
+            ) : (
+              <pre className="p-0 m-0 overflow-auto max-h-[60vh] bg-gray-50 dark:bg-gray-900">
+                <code className="block text-sm font-mono">
+                  {lines.map((line, index) => {
+                    const lineNum = index + 1;
+                    const isProblematic = problematicLine === lineNum;
+                    return (
+                      <div
+                        key={index}
+                        className={`flex ${isProblematic ? 'bg-red-100 dark:bg-red-900/30' : ''}`}
+                      >
+                        <span className={`select-none px-3 py-0.5 text-right w-12 border-r border-gray-200 dark:border-gray-700 ${isProblematic ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {lineNum}
+                        </span>
+                        <span className={`px-3 py-0.5 flex-1 whitespace-pre ${isProblematic ? 'text-red-800 dark:text-red-200' : 'text-gray-800 dark:text-gray-200'}`}>
+                          {line || '\u00A0'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </code>
+              </pre>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Custom code block renderer that handles mermaid
 function CustomCodeBlockRenderer({ code, language }: { code: string; language?: string }) {
@@ -106,6 +263,20 @@ function SourceToggle() {
 
 
 
+// Loading spinner component for content loading state
+function LoadingSpinner({ message }: { message?: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-center py-12">
+      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span className="text-gray-500 dark:text-gray-400">{message || t('common.loading')}</span>
+    </div>
+  );
+}
+
 // Status indicator component
 function StatusIndicator({ saving, saved, error, hasUnsavedChanges }: {
   saving: boolean;
@@ -175,6 +346,7 @@ export function MDXEditorWrapper({
   className = '',
   enableMermaid = true,
   height = 'full',
+  loading = false,
 }: MDXEditorWrapperProps) {
   const { t } = useTranslation();
   const { isDarkMode } = useMDXEditorTheme();
@@ -318,15 +490,39 @@ export function MDXEditorWrapper({
 
   // Render view mode (read-only)
   if (mode === 'view') {
+    // Show loading spinner while content is being fetched
+    if (loading) {
+      return (
+        <div className={`mdx-editor-wrapper view-mode ${isDarkMode ? 'dark-theme' : ''} ${className}`} style={heightStyle}>
+          <LoadingSpinner message={t('common.loadingContent')} />
+        </div>
+      );
+    }
+
+    // Show empty state message when there's no content
+    if (!content || content.trim() === '') {
+      return (
+        <div className={`mdx-editor-wrapper view-mode ${isDarkMode ? 'dark-theme' : ''} ${className}`} style={heightStyle}>
+          <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+            <span>{t('common.noContentAvailable')}</span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={`mdx-editor-wrapper view-mode ${isDarkMode ? 'dark-theme' : ''} ${className}`} style={heightStyle}>
-        <MDXEditor
-          ref={editorRef}
-          markdown={content}
-          plugins={plugins}
-          readOnly={true}
-          contentEditableClassName="prose prose-sm sm:prose-base max-w-none dark:prose-invert prose-img:max-w-full prose-img:h-auto prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-code:text-gray-800 dark:prose-code:text-gray-200 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900 prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300 prose-li:text-gray-700 dark:prose-li:text-gray-300"
-        />
+        <MDXEditorErrorBoundary content={content} className="view-mode-content">
+          <MDXEditor
+            key={content} // Force re-render when content changes to fix stale state
+            ref={editorRef}
+            markdown={content}
+            plugins={plugins}
+            readOnly={true}
+            suppressHtmlProcessing={true}
+            contentEditableClassName="prose prose-sm sm:prose-base max-w-none dark:prose-invert prose-img:max-w-full prose-img:h-auto prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-code:text-gray-800 dark:prose-code:text-gray-200 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900 prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300 prose-li:text-gray-700 dark:prose-li:text-gray-300"
+          />
+        </MDXEditorErrorBoundary>
       </div>
     );
   }
@@ -362,15 +558,18 @@ export function MDXEditorWrapper({
 
       {/* Editor */}
       <div className="flex-1 overflow-hidden">
-        <MDXEditor
-          ref={editorRef}
-          markdown={localContent}
-          onChange={handleChange}
-          plugins={plugins}
-          placeholder={placeholder || t('editor.markdown.placeholder')}
-          contentEditableClassName="prose prose-sm max-w-none dark:prose-invert p-4 min-h-full focus:outline-none"
-          overlayContainer={document.body}
-        />
+        <MDXEditorErrorBoundary content={localContent} className="h-full p-4" editable={true} onChange={handleChange}>
+          <MDXEditor
+            ref={editorRef}
+            markdown={localContent}
+            onChange={handleChange}
+            plugins={plugins}
+            placeholder={placeholder || t('editor.markdown.placeholder')}
+            contentEditableClassName="prose prose-sm max-w-none dark:prose-invert p-4 min-h-full focus:outline-none"
+            overlayContainer={document.body}
+            suppressHtmlProcessing={true}
+          />
+        </MDXEditorErrorBoundary>
       </div>
 
       {/* Status Bar */}

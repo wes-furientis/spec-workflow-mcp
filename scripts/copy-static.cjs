@@ -51,6 +51,15 @@ if (fs.existsSync(markdownSrc)) {
   console.log('✓ Copied markdown files');
 }
 
+// Copy archetype definitions (JSON files)
+const archetypesSrc = path.join(__dirname, '..', 'src', 'archetypes', 'definitions');
+const archetypesDest = path.join(__dirname, '..', 'dist', 'archetypes', 'definitions');
+
+if (fs.existsSync(archetypesSrc)) {
+  copyDir(archetypesSrc, archetypesDest);
+  console.log('✓ Copied archetype definitions');
+}
+
 // Copy locales directory
 const localesSrc = path.join(__dirname, '..', 'src', 'locales');
 const localesDest = path.join(__dirname, '..', 'dist', 'locales');

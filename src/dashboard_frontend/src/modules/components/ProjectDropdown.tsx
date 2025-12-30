@@ -2,6 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjects } from '../projects/ProjectProvider';
 
+/**
+ * Format an archetype name for display by capitalizing and replacing hyphens with spaces
+ * e.g., "greenfield" -> "Greenfield", "web-app" -> "Web App"
+ */
+function formatArchetypeName(archetype: string | undefined): string {
+  if (!archetype) return '';
+  return archetype
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export function ProjectDropdown() {
   const { t } = useTranslation();
   const { projects, currentProject, setCurrentProject, loading } = useProjects();
@@ -123,29 +135,42 @@ export function ProjectDropdown() {
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div
-                          className={`w-2 h-2 rounded-full ${
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
                             isCurrent
                               ? 'bg-indigo-600 dark:bg-indigo-400'
                               : 'bg-gray-400 dark:bg-gray-600'
                           }`}
                         />
-                        <span
-                          className={`text-sm truncate ${
-                            isCurrent
-                              ? 'font-semibold text-indigo-900 dark:text-indigo-100'
-                              : 'text-gray-900 dark:text-gray-100'
-                          }`}
-                          title={project.projectName}
-                        >
-                          {project.projectName}
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`text-sm truncate ${
+                                isCurrent
+                                  ? 'font-semibold text-indigo-900 dark:text-indigo-100'
+                                  : 'text-gray-900 dark:text-gray-100'
+                              }`}
+                              title={project.projectName}
+                            >
+                              {project.projectName}
+                            </span>
+                            {/* Archetype Badge */}
+                            <span
+                              className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded max-w-[80px] flex-shrink-0"
+                              title={project.archetype ? formatArchetypeName(project.archetype) : t('projects.noArchetype', 'No archetype')}
+                            >
+                              <span className="truncate">
+                                {project.archetype ? formatArchetypeName(project.archetype) : t('projects.noArchetype', 'No archetype')}
+                              </span>
+                            </span>
+                          </div>
                           {project.instances?.length > 0 && (
-                            <span className="text-gray-500 dark:text-gray-400 ml-1 font-normal">
-                              ({project.instances.length === 1
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">
+                              {project.instances.length === 1
                                 ? `PID: ${project.instances[0].pid}`
-                                : `${project.instances.length} instances`})
+                                : `${project.instances.length} instances`}
                             </span>
                           )}
-                        </span>
+                        </div>
                       </div>
                       {isCurrent && (
                         <svg

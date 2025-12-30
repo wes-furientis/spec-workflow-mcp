@@ -282,7 +282,8 @@ async function main() {
           port: dashboardPort,
           bindAddress,
           allowExternalAccess,
-          security: securityConfig
+          security: securityConfig,
+          contextPath: projectPath // Scan this directory for projects with .spec-workflow
         });
       } catch (error: any) {
         // Provide user-friendly error message with environment variable names

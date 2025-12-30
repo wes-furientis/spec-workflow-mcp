@@ -272,7 +272,12 @@ describe('PathUtils case sensitivity', () => {
 
   // Note: These tests verify case-insensitive behavior on macOS/Windows
   // On Linux (case-sensitive), these would behave differently
-  if (process.platform === 'darwin' || process.platform === 'win32') {
+  if (process.platform === 'linux') {
+    it('skips case-sensitivity tests on Linux (case-sensitive filesystem)', () => {
+      // This is a placeholder to avoid empty test suite error
+      expect(true).toBe(true);
+    });
+  } else if (process.platform === 'darwin' || process.platform === 'win32') {
     it('should match paths with different case on case-insensitive filesystems', () => {
       process.env.SPEC_WORKFLOW_HOST_PATH_PREFIX = '/Users/Dev';
       process.env.SPEC_WORKFLOW_CONTAINER_PATH_PREFIX = '/projects';

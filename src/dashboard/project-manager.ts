@@ -6,6 +6,7 @@ import { ApprovalStorage } from './approval-storage.js';
 import { SpecArchiveService } from '../core/archive-service.js';
 import { ProjectRegistry, ProjectRegistryEntry, ProjectInstance, generateProjectId } from '../core/project-registry.js';
 import { PathUtils } from '../core/path-utils.js';
+import { scanDirectory, watchForNewProjects, DiscoveredProject } from '../core/project-scanner.js';
 
 export interface ProjectContext {
   projectId: string;
@@ -13,6 +14,7 @@ export interface ProjectContext {
   originalProjectPath: string;   // Original host path for display/registry
   projectName: string;
   instances: ProjectInstance[];  // Active MCP server instances for this project
+  archetype?: string;            // Project archetype (e.g., "greenfield", "brownfield")
   parser: SpecParser;
   watcher: SpecWatcher;
   approvalStorage: ApprovalStorage;
@@ -23,10 +25,20 @@ export class ProjectManager extends EventEmitter {
   private registry: ProjectRegistry;
   private projects: Map<string, ProjectContext> = new Map();
   private registryWatcher?: chokidar.FSWatcher;
+  private projectScannerCleanup?: () => void;
+  private contextPath?: string;
 
   constructor() {
     super();
     this.registry = new ProjectRegistry();
+  }
+
+  /**
+   * Set the context path for project scanning
+   * This is the root directory to scan for projects with .spec-workflow directories
+   */
+  setContextPath(contextPath: string): void {
+    this.contextPath = contextPath;
   }
 
   /**
@@ -44,9 +56,78 @@ export class ProjectManager extends EventEmitter {
     // Watch registry file for changes
     this.startRegistryWatcher();
 
+    // Auto-discover projects from context path if set
+    if (this.contextPath) {
+      await this.scanForProjects();
+      this.startProjectWatcher();
+    }
+
     // Note: Removed periodic cleanup interval
     // MCP servers are responsible for cleaning up their own instances on stop()
     // The cleanup at startup handles any orphaned instances from crashes
+  }
+
+  /**
+   * Scan the context path for projects with .spec-workflow directories
+   * and register them automatically
+   */
+  private async scanForProjects(): Promise<void> {
+    if (!this.contextPath) return;
+
+    try {
+      console.error(`[ProjectManager] Scanning for projects in: ${this.contextPath}`);
+      const discoveredProjects = await scanDirectory(this.contextPath, 3);
+
+      console.error(`[ProjectManager] Found ${discoveredProjects.length} project(s) with .spec-workflow`);
+
+      for (const project of discoveredProjects) {
+        await this.registerDiscoveredProject(project);
+      }
+    } catch (error) {
+      console.error('[ProjectManager] Error scanning for projects:', error);
+      // Don't throw - scanning is optional enhancement, not critical
+    }
+  }
+
+  /**
+   * Register a discovered project, avoiding duplicates
+   */
+  private async registerDiscoveredProject(project: DiscoveredProject): Promise<void> {
+    try {
+      // Check if already registered by checking the registry
+      const existing = await this.registry.getProject(project.path);
+      if (existing && this.projects.has(existing.projectId)) {
+        // Already registered and loaded
+        return;
+      }
+
+      console.error(`[ProjectManager] Auto-registering project: ${project.name} at ${project.path}`);
+
+      // Use addProjectByPath which handles registration and loading
+      const projectId = await this.addProjectByPath(project.path);
+
+      // Emit projects update to trigger WebSocket broadcast
+      this.emit('projects-update', this.getProjectsList());
+
+      console.error(`[ProjectManager] Project registered: ${project.name} (${projectId})`);
+    } catch (error) {
+      console.error(`[ProjectManager] Failed to register discovered project ${project.name}:`, error);
+      // Continue with other projects - don't let one failure stop everything
+    }
+  }
+
+  /**
+   * Start watching for new projects being created in the context path
+   */
+  private startProjectWatcher(): void {
+    if (!this.contextPath) return;
+
+    console.error(`[ProjectManager] Starting project watcher for: ${this.contextPath}`);
+
+    this.projectScannerCleanup = watchForNewProjects(this.contextPath, async (project: DiscoveredProject) => {
+      console.error(`[ProjectManager] New project detected: ${project.name} at ${project.path}`);
+      await this.registerDiscoveredProject(project);
+    });
   }
 
   /**
@@ -99,15 +180,16 @@ export class ProjectManager extends EventEmitter {
       const registryIds = new Set(entries.map(e => e.projectId));
       const currentIds = new Set(this.projects.keys());
 
-      // Add new projects or update instances for existing ones
+      // Add new projects or update instances/archetype for existing ones
       for (const entry of entries) {
         if (!currentIds.has(entry.projectId)) {
           await this.addProject(entry);
         } else {
-          // Update instances for existing project
+          // Update instances and archetype for existing project
           const project = this.projects.get(entry.projectId);
           if (project) {
             project.instances = entry.instances || [];
+            project.archetype = entry.archetype;
           }
         }
       }
@@ -166,6 +248,7 @@ export class ProjectManager extends EventEmitter {
         originalProjectPath: entry.projectPath, // Keep original for display/registry
         projectName: entry.projectName,
         instances: entry.instances || [],       // Track MCP server instances
+        archetype: entry.archetype,             // Project archetype from registry
         parser,
         watcher,
         approvalStorage,
@@ -230,12 +313,14 @@ export class ProjectManager extends EventEmitter {
     projectName: string;
     projectPath: string;
     instances: ProjectInstance[];
+    archetype?: string;
   }> {
     return Array.from(this.projects.values()).map(p => ({
       projectId: p.projectId,
       projectName: p.projectName,
       projectPath: p.originalProjectPath,  // Return original path for display
-      instances: p.instances
+      instances: p.instances,
+      archetype: p.archetype
     }));
   }
 
@@ -276,6 +361,12 @@ export class ProjectManager extends EventEmitter {
    * Stop the project manager
    */
   async stop(): Promise<void> {
+    // Stop project scanner watcher
+    if (this.projectScannerCleanup) {
+      this.projectScannerCleanup();
+      this.projectScannerCleanup = undefined;
+    }
+
     // Stop registry watcher
     if (this.registryWatcher) {
       this.registryWatcher.removeAllListeners();

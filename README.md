@@ -30,6 +30,8 @@ A Model Context Protocol (MCP) server for structured spec-driven development wit
 - **Structured Development Workflow** - Sequential spec creation (Requirements → Design → Tasks)
 - **Real-Time Web Dashboard** - Monitor specs, tasks, and progress with live updates
 - **VSCode Extension** - Integrated sidebar dashboard for VSCode users
+- **Project Archetypes** - Pre-configured templates for different project types (greenfield, brownfield, libraries, etc.)
+- **Auto-Discovery** - Automatically finds and registers projects in your workspace
 - **Approval Workflow** - Complete approval process with revisions
 - **Task Progress Tracking** - Visual progress bars and detailed status
 - **Implementation Logs** - Searchable logs of all task implementations with code statistics
@@ -328,6 +330,58 @@ SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-m
 - [Tools Reference](docs/TOOLS-REFERENCE.md) - Complete tools documentation
 - [Development](docs/DEVELOPMENT.md) - Contributing and development setup
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+## 🏗️ Project Archetypes
+
+Project archetypes are pre-configured templates that customize the spec workflow for different types of projects. Each archetype provides tailored guidance, steering documents, and workflow emphasis appropriate for that project type.
+
+### Bundled Archetypes
+
+| Archetype | Description |
+|-----------|-------------|
+| **greenfield** | New projects starting from scratch. Emphasizes architecture decisions, initial setup, and scaffolding. |
+| **brownfield** | Updates to existing codebases. Emphasizes existing patterns, migration strategies, and backward compatibility. |
+| **code-library** | Software libraries and packages. Emphasizes API documentation, versioning, and developer experience. |
+| **web-app** | User-facing web applications. Emphasizes UI/UX considerations, user flows, and frontend architecture. |
+| **research-paper** | Academic papers and research documents. Emphasizes citations, methodology, and scholarly rigor. |
+| **generic** | Default project type suitable for any specification. Includes all templates and standard steering documents. |
+
+### Setting an Archetype
+
+Set the archetype for a project using the dashboard:
+
+1. Open the dashboard and select your project
+2. Go to **Settings**
+3. Use the **Project Archetype** dropdown to select an archetype
+4. The archetype is saved automatically
+
+When an archetype is set, the AI assistant receives tailored guidance for that project type, including workflow recommendations and key considerations.
+
+## 🔍 Auto-Discovery
+
+When running the dashboard with a context path, spec-workflow automatically discovers and registers projects that contain a `.spec-workflow` directory.
+
+### How It Works
+
+1. **Initial Scan**: On dashboard startup, the specified directory is scanned recursively (up to 3 levels deep)
+2. **Project Detection**: Any directory containing a `.spec-workflow` folder is registered as a project
+3. **Live Watching**: New projects created while the dashboard is running are automatically detected and added
+
+### What Gets Scanned
+
+The scanner looks for `.spec-workflow` directories in your workspace while skipping:
+- Hidden directories (except `.spec-workflow` itself)
+- `node_modules`, `vendor`, `__pycache__`, `.git`, `dist`, `build`, `target`
+
+### Usage
+
+To enable auto-discovery, run the dashboard with a path argument:
+
+```bash
+npx -y @pimzino/spec-workflow-mcp@latest --dashboard /path/to/workspace
+```
+
+All projects under `/path/to/workspace` that have a `.spec-workflow` directory will be automatically available in the dashboard.
 
 ## 📁 Project Structure
 

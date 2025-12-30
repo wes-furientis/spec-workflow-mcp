@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import { useApi } from '../api/api';
 import { AutomationJob } from '../../types';
 import { JobFormModal } from './JobFormModal';
 import { JobExecutionHistory } from './JobExecutionHistory';
+import { ArchetypeSelector, Archetype } from '../components/ArchetypeSelector';
+import { useProjects } from '../projects/ProjectProvider';
 
 interface JobUIState {
   id: string;
@@ -19,6 +21,7 @@ interface JobUIState {
 
 function Content() {
   const { t } = useTranslation();
+  const { currentProject, currentProjectId, refreshProjects } = useProjects();
   const [jobs, setJobs] = useState<JobUIState[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<Record<string, boolean>>({});
@@ -32,6 +35,88 @@ function Content() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  // Archetype state
+  const [archetypes, setArchetypes] = useState<Archetype[]>([]);
+  const [archetypesLoading, setArchetypesLoading] = useState(true);
+  const [archetypesError, setArchetypesError] = useState<string | null>(null);
+  const [showArchetypeConfirmModal, setShowArchetypeConfirmModal] = useState(false);
+  const [pendingArchetype, setPendingArchetype] = useState<string | null>(null);
+  const [archetypeUpdating, setArchetypeUpdating] = useState(false);
+  const archetypesCacheRef = useRef<Archetype[] | null>(null);
+
+  // Load archetypes (with caching)
+  const loadArchetypes = useCallback(async () => {
+    // Return cached archetypes if available
+    if (archetypesCacheRef.current) {
+      setArchetypes(archetypesCacheRef.current);
+      setArchetypesLoading(false);
+      return;
+    }
+
+    try {
+      setArchetypesLoading(true);
+      const response = await fetch('/api/archetypes');
+      if (!response.ok) {
+        throw new Error(`Failed to load archetypes: ${response.status}`);
+      }
+      const data = await response.json();
+      archetypesCacheRef.current = data;
+      setArchetypes(data);
+      setArchetypesError(null);
+    } catch (err) {
+      setArchetypesError(err instanceof Error ? err.message : 'Failed to load archetypes');
+    } finally {
+      setArchetypesLoading(false);
+    }
+  }, []);
+
+  // Load archetypes on mount
+  useEffect(() => {
+    loadArchetypes();
+  }, [loadArchetypes]);
+
+  // Handle archetype change request (shows confirmation dialog)
+  const handleArchetypeChangeRequest = (archetype: string) => {
+    setPendingArchetype(archetype);
+    setShowArchetypeConfirmModal(true);
+  };
+
+  // Handle confirmed archetype change
+  const handleArchetypeConfirm = async () => {
+    if (!currentProjectId || pendingArchetype === null) return;
+
+    try {
+      setArchetypeUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/projects/${encodeURIComponent(currentProjectId)}/archetype`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archetype: pendingArchetype || null }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || `Failed to update archetype: ${response.status}`);
+      }
+
+      // Refresh projects to get updated archetype
+      await refreshProjects();
+      setShowArchetypeConfirmModal(false);
+      setPendingArchetype(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update archetype');
+    } finally {
+      setArchetypeUpdating(false);
+    }
+  };
+
+  // Cancel archetype change
+  const handleArchetypeCancel = () => {
+    setShowArchetypeConfirmModal(false);
+    setPendingArchetype(null);
+  };
 
   const loadJobs = async () => {
     try {
@@ -238,6 +323,77 @@ function Content() {
           </div>
         </div>
       )}
+
+      {/* Project Archetype Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-visible">
+        {/* Section Header */}
+        <button
+          onClick={() => toggleSectionExpanded('projectArchetype')}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-3 flex-1 text-left">
+            <ChevronRightIcon className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${expandedSections.has('projectArchetype') ? 'rotate-90' : ''}`} />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {t('settings.section.projectArchetype', 'Project Archetype')}
+              </h2>
+            </div>
+          </div>
+        </button>
+
+        {/* Section Content */}
+        {expandedSections.has('projectArchetype') && (
+          <div className="border-t border-gray-200 dark:border-gray-700 p-6 space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t('settings.section.projectArchetypeDesc', 'Select a project archetype to customize the workflow templates and configurations for this project. Archetypes define standard patterns for different types of projects.')}
+            </p>
+
+            {/* Archetype Error */}
+            {archetypesError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p className="text-sm text-red-700 dark:text-red-400">{archetypesError}</p>
+                <button
+                  onClick={() => {
+                    archetypesCacheRef.current = null;
+                    loadArchetypes();
+                  }}
+                  className="mt-2 text-sm text-red-600 dark:text-red-400 hover:underline"
+                >
+                  {t('settings.retry', 'Retry')}
+                </button>
+              </div>
+            )}
+
+            {/* Archetype Selector */}
+            {!archetypesError && (
+              <div className="flex items-center gap-4">
+                <label
+                  id="archetype-selector-label"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {t('settings.currentArchetype', 'Current Archetype:')}
+                </label>
+                <ArchetypeSelector
+                  currentArchetype={currentProject?.archetype}
+                  onChange={handleArchetypeChangeRequest}
+                  archetypes={archetypes}
+                  loading={archetypesLoading}
+                  disabled={!currentProjectId || archetypeUpdating}
+                />
+              </div>
+            )}
+
+            {/* No Project Selected Warning */}
+            {!currentProjectId && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                  {t('settings.noProjectSelected', 'Please select a project to configure its archetype.')}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Automated Cleanup Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -462,6 +618,56 @@ function Content() {
                 className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
               >
                 {t('settings.delete', 'Delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archetype Change Confirmation Modal */}
+      {showArchetypeConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              {t('settings.changeArchetype', 'Change Project Archetype')}
+            </h2>
+            <div className="mb-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-3">
+                {t('settings.archetypeChangeWarning', 'Changing the project archetype may affect:')}
+              </p>
+              <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-2">
+                <li>{t('settings.archetypeImpact1', 'Available workflow templates')}</li>
+                <li>{t('settings.archetypeImpact2', 'Default configurations and settings')}</li>
+                <li>{t('settings.archetypeImpact3', 'Task generation patterns')}</li>
+              </ul>
+              <p className="text-gray-600 dark:text-gray-400 mt-3">
+                {t('settings.archetypeChangeConfirmPrompt', 'Are you sure you want to proceed?')}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleArchetypeCancel}
+                disabled={archetypeUpdating}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors disabled:opacity-50"
+              >
+                {t('settings.cancel', 'Cancel')}
+              </button>
+              <button
+                onClick={handleArchetypeConfirm}
+                disabled={archetypeUpdating}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50 flex items-center justify-center"
+              >
+                {archetypeUpdating ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {t('settings.updating', 'Updating...')}
+                  </>
+                ) : (
+                  t('settings.confirm', 'Confirm')
+                )}
               </button>
             </div>
           </div>

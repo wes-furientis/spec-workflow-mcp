@@ -1,0 +1,43 @@
+{
+  "name": "research-paper",
+  "displayName": "Research Paper",
+  "description": "Academic papers and research documents. Emphasizes citations, methodology, and scholarly rigor.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": [],
+    "optional": [],
+    "custom": [
+      {
+        "name": "methodology",
+        "templateFile": "methodology.md",
+        "description": "Research methodology, data collection methods, and analysis approach"
+      },
+      {
+        "name": "literature",
+        "templateFile": "literature.md",
+        "description": "Literature review structure and key citations to incorporate"
+      }
+    ]
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Establish clear research questions and hypotheses",
+      "Document methodology rigorously",
+      "Track citations and references systematically",
+      "Plan peer review and revision cycles",
+      "Consider target publication venue requirements"
+    ],
+    "documentationFocus": "Research methodology, literature citations, and academic formatting requirements",
+    "keyConsiderations": [
+      "What is the core research question or thesis?",
+      "What methodology best supports the research goals?",
+      "Are all claims properly cited and supported?",
+      "Does the structure follow target venue guidelines?",
+      "What data or evidence is needed to support conclusions?"
+    ]
+  }
+}

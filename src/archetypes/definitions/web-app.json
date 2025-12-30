@@ -1,0 +1,32 @@
+{
+  "name": "web-app",
+  "displayName": "Web Application",
+  "description": "User-facing web applications. Emphasizes UI/UX considerations, user flows, and frontend architecture.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": ["product", "tech", "structure"],
+    "optional": [],
+    "custom": []
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Define clear user flows and interactions",
+      "Consider accessibility requirements (WCAG)",
+      "Plan responsive design for multiple devices",
+      "Document component hierarchy and state management",
+      "Address performance and loading considerations"
+    ],
+    "documentationFocus": "User flows, UI component documentation, and end-user facing features",
+    "keyConsiderations": [
+      "What are the key user journeys?",
+      "How will the UI adapt to different screen sizes?",
+      "What accessibility standards must be met?",
+      "How is application state managed?",
+      "What is the performance budget for initial load?"
+    ]
+  }
+}

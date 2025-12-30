@@ -1,5 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ToolContext, ToolResponse } from '../types.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
+import { ArchetypeDefinition } from '../archetypes/types.js';
 
 export const specWorkflowGuideTool: Tool = {
   name: 'spec-workflow-guide',
@@ -20,26 +22,60 @@ export async function specWorkflowGuideHandler(args: any, context: ToolContext):
     `Monitor progress on dashboard: ${context.dashboardUrl}` :
     'Please start the dashboard with: spec-workflow-mcp --dashboard';
 
+  // Get archetype definition if available
+  let archetypeDefinition: ArchetypeDefinition | undefined;
+  if (context.projectArchetype) {
+    archetypeDefinition = await archetypeRegistry.get(context.projectArchetype);
+  }
+
+  // Generate the guide with archetype customization
+  const guide = getSpecWorkflowGuide(archetypeDefinition);
+
+  // Build next steps, potentially customized by archetype
+  const nextSteps = [
+    'Follow sequence: Requirements → Design → Tasks → Implementation',
+    'Load templates with get-template-context first',
+    'Request approval after each document',
+    'Use MCP tools only',
+    dashboardMessage
+  ];
+
+  // Add archetype-specific emphasis if available
+  if (archetypeDefinition && archetypeDefinition.guidance.workflowEmphasis.length > 0) {
+    nextSteps.unshift(`Key focus for ${archetypeDefinition.displayName}: ${archetypeDefinition.guidance.workflowEmphasis[0]}`);
+  }
+
   return {
     success: true,
-    message: 'Complete spec workflow guide loaded - follow this workflow exactly',
+    message: archetypeDefinition
+      ? `Complete spec workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly`
+      : 'Complete spec workflow guide loaded - follow this workflow exactly',
     data: {
-      guide: getSpecWorkflowGuide(),
+      guide: guide,
       dashboardUrl: context.dashboardUrl,
-      dashboardAvailable: !!context.dashboardUrl
+      dashboardAvailable: !!context.dashboardUrl,
+      archetype: archetypeDefinition ? {
+        name: archetypeDefinition.name,
+        displayName: archetypeDefinition.displayName,
+        guidance: archetypeDefinition.guidance
+      } : undefined
     },
-    nextSteps: [
-      'Follow sequence: Requirements → Design → Tasks → Implementation',
-      'Load templates with get-template-context first',
-      'Request approval after each document',
-      'Use MCP tools only',
-      dashboardMessage
-    ]
+    nextSteps: nextSteps
   };
 }
 
-function getSpecWorkflowGuide(): string {
+function getSpecWorkflowGuide(archetype?: ArchetypeDefinition): string {
   const currentYear = new Date().getFullYear();
+
+  // Determine which steering docs to mention based on archetype
+  const steeringDocs = getSteeringDocsForGuide(archetype);
+  const steeringDocsText = steeringDocs.length > 0
+    ? steeringDocs.map(d => `${d}.md`).join(', ')
+    : 'product.md, tech.md, structure.md';
+
+  // Get archetype-specific guidance sections
+  const archetypeGuidance = archetype ? getArchetypeGuidanceSection(archetype) : '';
+
   return `# Spec Development Workflow
 
 ## Overview
@@ -126,7 +162,7 @@ flowchart TD
 - approvals: Manage approval workflow (actions: request, status, delete)
 
 **Process**:
-1. Check if \`.spec-workflow/steering/\` exists (if yes, read product.md, tech.md, structure.md)
+1. Check if \`.spec-workflow/steering/\` exists (if yes, read ${steeringDocsText})
 2. Check for custom template at \`.spec-workflow/user-templates/requirements-template.md\`
 3. If no custom template, read from \`.spec-workflow/templates/requirements-template.md\`
 4. Research market/user expectations (if web search available, current year: ${currentYear})
@@ -285,5 +321,80 @@ flowchart TD
     ├── product.md
     ├── tech.md
     └── structure.md
-\`\`\``;
+\`\`\`${archetypeGuidance}`;
+}
+
+/**
+ * Get the list of steering documents to mention in the guide based on archetype
+ * @param archetype - The archetype definition, if available
+ * @returns Array of steering document names (without .md extension)
+ */
+function getSteeringDocsForGuide(archetype?: ArchetypeDefinition): string[] {
+  if (!archetype) {
+    // Default/generic behavior: all standard steering docs
+    return ['product', 'tech', 'structure'];
+  }
+
+  // Combine required and optional steering docs from archetype
+  const docs: string[] = [...archetype.steering.required, ...archetype.steering.optional];
+
+  // Add custom steering docs
+  for (const custom of archetype.steering.custom) {
+    docs.push(custom.name);
+  }
+
+  return docs;
+}
+
+/**
+ * Generate archetype-specific guidance section to append to the guide
+ * @param archetype - The archetype definition
+ * @returns Markdown section with archetype-specific guidance
+ */
+function getArchetypeGuidanceSection(archetype: ArchetypeDefinition): string {
+  const lines: string[] = [
+    '',
+    '',
+    `## ${archetype.displayName} Guidance`,
+    '',
+    `**Documentation Focus**: ${archetype.guidance.documentationFocus}`,
+    '',
+    '**Key Workflow Emphasis**:',
+  ];
+
+  for (const emphasis of archetype.guidance.workflowEmphasis) {
+    lines.push(`- ${emphasis}`);
+  }
+
+  lines.push('');
+  lines.push('**Key Considerations**:');
+
+  for (const consideration of archetype.guidance.keyConsiderations) {
+    lines.push(`- ${consideration}`);
+  }
+
+  // Add steering document configuration if different from default
+  if (archetype.steering.required.length > 0 || archetype.steering.custom.length > 0) {
+    lines.push('');
+    lines.push('**Steering Documents for this archetype**:');
+
+    if (archetype.steering.required.length > 0) {
+      lines.push(`- Required: ${archetype.steering.required.map(d => `${d}.md`).join(', ')}`);
+    } else {
+      lines.push('- Required: None (steering docs are optional for this archetype)');
+    }
+
+    if (archetype.steering.optional.length > 0) {
+      lines.push(`- Optional: ${archetype.steering.optional.map(d => `${d}.md`).join(', ')}`);
+    }
+
+    if (archetype.steering.custom.length > 0) {
+      lines.push('- Custom:');
+      for (const custom of archetype.steering.custom) {
+        lines.push(`  - ${custom.name}.md: ${custom.description}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
 }

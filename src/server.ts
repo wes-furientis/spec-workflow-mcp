@@ -14,6 +14,7 @@ import { validateProjectPath } from './core/path-utils.js';
 import { WorkspaceInitializer } from './core/workspace-initializer.js';
 import { ProjectRegistry } from './core/project-registry.js';
 import { DashboardSessionManager } from './core/dashboard-session.js';
+import { getProjectArchetype } from './core/project-scanner.js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -86,11 +87,20 @@ export class SpecWorkflowMCPServer {
         // Dashboard not running, continue without it
       }
 
+      // Try to get the project archetype from config
+      let projectArchetype: string | undefined = undefined;
+      try {
+        projectArchetype = await getProjectArchetype(this.projectPath);
+      } catch (error) {
+        // Failed to read archetype, continue with undefined (generic behavior)
+      }
+
       // Create context for tools
       const context = {
         projectPath: this.projectPath,
         dashboardUrl: dashboardUrl,
-        lang: this.lang
+        lang: this.lang,
+        projectArchetype: projectArchetype
       };
 
       // Register handlers

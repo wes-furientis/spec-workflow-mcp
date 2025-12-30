@@ -14,6 +14,8 @@ export interface ProjectRegistryEntry {
   projectPath: string;
   projectName: string;
   instances: ProjectInstance[];
+  archetype?: string;           // The archetype name (e.g., "greenfield", "brownfield")
+  archetypeSetAt?: string;      // ISO timestamp of when the archetype was set
 }
 
 /**
@@ -297,6 +299,38 @@ export class ProjectRegistry {
     const absolutePath = resolve(projectPath);
     const projectId = generateProjectId(absolutePath);
     return registry.has(projectId);
+  }
+
+  /**
+   * Get the archetype for a project by projectId
+   * @returns The archetype name, or null if not set
+   */
+  async getArchetype(projectId: string): Promise<string | null> {
+    const registry = await this.readRegistry();
+    const entry = registry.get(projectId);
+    return entry?.archetype || null;
+  }
+
+  /**
+   * Set the archetype for a project by projectId
+   * @param projectId - The project ID
+   * @param archetype - The archetype name to set
+   * @returns true if successful, throws if project not found
+   */
+  async setArchetype(projectId: string, archetype: string): Promise<boolean> {
+    const registry = await this.readRegistry();
+    const entry = registry.get(projectId);
+
+    if (!entry) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    entry.archetype = archetype;
+    entry.archetypeSetAt = new Date().toISOString();
+    registry.set(projectId, entry);
+
+    await this.writeRegistry(registry);
+    return true;
   }
 
   /**

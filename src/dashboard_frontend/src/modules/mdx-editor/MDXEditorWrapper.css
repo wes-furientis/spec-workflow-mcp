@@ -4,9 +4,28 @@
   width: 100%;
 }
 
-.mdx-editor-wrapper.view-mode,
+.mdx-editor-wrapper.view-mode {
+  overflow: auto;
+}
+
 .mdx-editor-wrapper.edit-mode {
   overflow: hidden;
+}
+
+/* View mode content container - ensures content is visible */
+.mdx-editor-wrapper.view-mode .view-mode-content {
+  min-height: 100px;
+}
+
+/* Ensure MDXEditor in view mode displays properly */
+.mdx-editor-wrapper.view-mode .mdxeditor {
+  min-height: auto;
+  height: auto;
+}
+
+.mdx-editor-wrapper.view-mode .mdxeditor-root-contenteditable {
+  min-height: auto;
+  padding: 1rem;
 }
 
 /* Dark theme support for MDX Editor */

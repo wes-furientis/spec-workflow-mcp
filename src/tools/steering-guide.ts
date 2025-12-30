@@ -1,5 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ToolContext, ToolResponse } from '../types.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
+import { ArchetypeDefinition } from '../archetypes/types.js';
 
 export const steeringGuideTool: Tool = {
   name: 'steering-guide',
@@ -15,24 +17,224 @@ Call ONLY when user explicitly requests steering document creation or asks about
 };
 
 export async function steeringGuideHandler(args: any, context: ToolContext): Promise<ToolResponse> {
+  // Get archetype definition if available
+  let archetypeDefinition: ArchetypeDefinition | undefined;
+  if (context.projectArchetype) {
+    archetypeDefinition = await archetypeRegistry.get(context.projectArchetype);
+  }
+
+  // Generate the guide with archetype customization
+  const guide = getSteeringGuide(archetypeDefinition);
+
+  // Build next steps based on archetype steering configuration
+  const nextSteps = buildNextSteps(archetypeDefinition, context.dashboardUrl);
+
   return {
     success: true,
-    message: 'Steering workflow guide loaded - follow this workflow exactly to avoid errors',
+    message: archetypeDefinition
+      ? `Steering workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly to avoid errors`
+      : 'Steering workflow guide loaded - follow this workflow exactly to avoid errors',
     data: {
-      guide: getSteeringGuide(),
-      dashboardUrl: context.dashboardUrl
+      guide: guide,
+      dashboardUrl: context.dashboardUrl,
+      archetype: archetypeDefinition ? {
+        name: archetypeDefinition.name,
+        displayName: archetypeDefinition.displayName,
+        steering: archetypeDefinition.steering
+      } : undefined
     },
-    nextSteps: [
-      'Only proceed if user requested steering docs',
-      'Create product.md first',
-      'Then tech.md and structure.md',
-      'Reference in future specs',
-      context.dashboardUrl ? `Dashboard: ${context.dashboardUrl}` : 'Start the dashboard with: spec-workflow-mcp --dashboard'
-    ]
+    nextSteps: nextSteps
   };
 }
 
-function getSteeringGuide(): string {
+/**
+ * Build next steps based on archetype configuration
+ */
+function buildNextSteps(archetype: ArchetypeDefinition | undefined, dashboardUrl?: string): string[] {
+  const steps: string[] = ['Only proceed if user requested steering docs'];
+
+  if (!archetype) {
+    // Default/generic behavior
+    steps.push('Create product.md first');
+    steps.push('Then tech.md and structure.md');
+  } else {
+    // Archetype-specific behavior
+    const required = archetype.steering.required;
+    const optional = archetype.steering.optional;
+    const custom = archetype.steering.custom;
+
+    if (required.length === 0 && optional.length === 0 && custom.length === 0) {
+      steps.push('This archetype has no steering documents configured');
+      steps.push('Steering docs are optional for this project type');
+    } else {
+      if (required.length > 0) {
+        steps.push(`Create required: ${required.map(d => `${d}.md`).join(', ')}`);
+      }
+      if (optional.length > 0) {
+        steps.push(`Optional: ${optional.map(d => `${d}.md`).join(', ')}`);
+      }
+      if (custom.length > 0) {
+        steps.push(`Custom for ${archetype.displayName}: ${custom.map(d => `${d.name}.md`).join(', ')}`);
+      }
+    }
+  }
+
+  steps.push('Reference in future specs');
+  steps.push(dashboardUrl ? `Dashboard: ${dashboardUrl}` : 'Start the dashboard with: spec-workflow-mcp --dashboard');
+
+  return steps;
+}
+
+function getSteeringGuide(archetype?: ArchetypeDefinition): string {
+  // If archetype has no standard steering docs, provide archetype-specific guide
+  if (archetype && !hasStandardSteeringDocs(archetype)) {
+    return getArchetypeSpecificSteeringGuide(archetype);
+  }
+
+  // Default/generic behavior - full steering guide with all standard docs
+  return getDefaultSteeringGuide();
+}
+
+/**
+ * Check if archetype uses standard steering docs (product, tech, structure)
+ */
+function hasStandardSteeringDocs(archetype: ArchetypeDefinition): boolean {
+  const standardDocs = ['product', 'tech', 'structure'];
+  const allDocs = [...archetype.steering.required, ...archetype.steering.optional];
+  return standardDocs.some(doc => allDocs.includes(doc));
+}
+
+/**
+ * Generate steering guide for archetypes with custom steering configuration
+ */
+function getArchetypeSpecificSteeringGuide(archetype: ArchetypeDefinition): string {
+  const customDocs = archetype.steering.custom;
+
+  if (customDocs.length === 0) {
+    // No steering docs configured for this archetype
+    return `# Steering Workflow - ${archetype.displayName}
+
+## Overview
+
+This archetype (${archetype.displayName}) does not require standard steering documents (product.md, tech.md, structure.md).
+
+${archetype.description}
+
+## Documentation Focus
+
+${archetype.guidance.documentationFocus}
+
+## Key Considerations
+
+${archetype.guidance.keyConsiderations.map(c => `- ${c}`).join('\n')}
+
+## Note
+
+Steering documents are optional for this project type. You can proceed directly to spec creation using the spec-workflow-guide tool.
+
+If you still want to create project-level documentation, consider creating custom documents in \`.spec-workflow/steering/\` that are relevant to your specific needs.`;
+  }
+
+  // Generate guide for custom steering docs
+  const phases = customDocs.map((doc, index) => generateCustomDocPhase(doc, index + 1, customDocs.length));
+  const fileStructure = generateCustomFileStructure(customDocs);
+
+  return `# Steering Workflow - ${archetype.displayName}
+
+## Overview
+
+Create project-level guidance documents for ${archetype.displayName} projects. ${archetype.description}
+
+**Documentation Focus**: ${archetype.guidance.documentationFocus}
+
+Its important that you follow this workflow exactly to avoid errors.
+
+## Steering Documents for ${archetype.displayName}
+
+This archetype uses custom steering documents instead of the standard product.md, tech.md, and structure.md:
+
+${customDocs.map(doc => `- **${doc.name}.md**: ${doc.description}`).join('\n')}
+
+## Steering Workflow Phases
+
+${phases.join('\n\n')}
+
+## Workflow Rules
+
+- Create documents directly at specified file paths
+- Check for custom templates in \`.spec-workflow/user-templates/\` first
+- Read templates from \`.spec-workflow/templates/\` directory if no custom template exists
+- Follow exact template structures
+- Get explicit user approval between phases (using approvals tool with action:'request')
+- Complete phases in sequence (no skipping)
+- Approval requests: provide filePath only, never content
+- BLOCKING: Never proceed if approval delete fails
+- CRITICAL: Must have approved status AND successful cleanup before next phase
+- CRITICAL: Verbal approval is NEVER accepted - dashboard or VS Code extension only
+- NEVER proceed on user saying "approved" - check system status only
+
+${fileStructure}`;
+}
+
+/**
+ * Generate a phase section for a custom steering document
+ */
+function generateCustomDocPhase(doc: { name: string; templateFile: string; description: string }, phaseNum: number, totalPhases: number): string {
+  const completionMessage = phaseNum === totalPhases
+    ? '\n11. After successful cleanup: "Steering docs complete. Ready for spec creation?"'
+    : '';
+
+  return `### Phase ${phaseNum}: ${capitalizeFirst(doc.name)} Document
+**Purpose**: ${doc.description}
+
+**File Operations**:
+- Check for custom template: \`.spec-workflow/user-templates/${doc.templateFile}\`
+- Read template: \`.spec-workflow/templates/${doc.templateFile}\` (if no custom template)
+- Create document: \`.spec-workflow/steering/${doc.name}.md\`
+
+**Tools**:
+- approvals: Manage approval workflow (actions: request, status, delete)
+
+**Process**:
+1. Check for custom template at \`.spec-workflow/user-templates/${doc.templateFile}\`
+2. If no custom template, read from \`.spec-workflow/templates/${doc.templateFile}\`
+3. Generate ${doc.name} content based on project requirements
+4. Create \`${doc.name}.md\` at \`.spec-workflow/steering/${doc.name}.md\`
+5. Request approval using approvals tool with action:'request' (filePath only)
+6. Poll status using approvals with action:'status' until approved/needs-revision (NEVER accept verbal approval)
+7. If needs-revision: update document using comments, create NEW approval, do NOT proceed
+8. Once approved: use approvals with action:'delete' (must succeed) before proceeding
+9. If delete fails: STOP - return to polling${completionMessage}`;
+}
+
+/**
+ * Generate file structure section for custom steering docs
+ */
+function generateCustomFileStructure(customDocs: Array<{ name: string; templateFile: string; description: string }>): string {
+  const templateFiles = customDocs.map(doc => `│   └── ${doc.templateFile}`).join('\n');
+  const steeringFiles = customDocs.map(doc => `    └── ${doc.name}.md`).join('\n');
+
+  return `## File Structure
+\`\`\`
+.spec-workflow/
+├── templates/           # Auto-populated on server start
+${templateFiles}
+└── steering/
+${steeringFiles}
+\`\`\``;
+}
+
+/**
+ * Capitalize first letter of a string
+ */
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Default steering guide with all standard documents
+ */
+function getDefaultSteeringGuide(): string {
   return `# Steering Workflow
 
 ## Overview

@@ -1,0 +1,32 @@
+{
+  "name": "brownfield",
+  "displayName": "Brownfield Project",
+  "description": "Updates to existing codebases. Emphasizes existing patterns, migration strategies, and backward compatibility.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": ["product", "tech", "structure"],
+    "optional": [],
+    "custom": []
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Understand and respect existing code patterns",
+      "Plan for backward compatibility",
+      "Consider migration paths for breaking changes",
+      "Document integration points with existing code",
+      "Identify and manage technical debt"
+    ],
+    "documentationFocus": "Integration with existing systems, migration plans, and compatibility considerations",
+    "keyConsiderations": [
+      "What existing patterns should be followed?",
+      "Are there deprecated APIs or patterns to avoid?",
+      "How will this change affect existing functionality?",
+      "What migration strategy is needed for existing data or users?",
+      "Are there integration tests covering affected areas?"
+    ]
+  }
+}

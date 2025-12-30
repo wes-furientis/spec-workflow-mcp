@@ -24,6 +24,8 @@ import {
   DEFAULT_SECURITY_CONFIG
 } from '../core/security-utils.js';
 import { SecurityConfig } from '../types.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
+import { ProjectRegistry } from '../core/project-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,11 +42,13 @@ export interface MultiDashboardOptions {
   bindAddress?: string; // Network binding address
   allowExternalAccess?: boolean; // Explicit opt-in for non-localhost binding
   security?: Partial<SecurityConfig>; // Security features configuration
+  contextPath?: string; // Root directory to scan for projects with .spec-workflow
 }
 
 export class MultiProjectDashboardServer {
   private app: FastifyInstance;
   private projectManager: ProjectManager;
+  private projectRegistry: ProjectRegistry;
   private jobScheduler: JobScheduler;
   private sessionManager: DashboardSessionManager;
   private options: MultiDashboardOptions;
@@ -66,8 +70,14 @@ export class MultiProjectDashboardServer {
   constructor(options: MultiDashboardOptions = {}) {
     this.options = options;
     this.projectManager = new ProjectManager();
+    this.projectRegistry = new ProjectRegistry();
     this.jobScheduler = new JobScheduler(this.projectManager);
     this.sessionManager = new DashboardSessionManager();
+
+    // Set context path for project auto-discovery if provided
+    if (options.contextPath) {
+      this.projectManager.setContextPath(options.contextPath);
+    }
 
     // Initialize network binding configuration
     this.bindAddress = options.bindAddress || '127.0.0.1';
@@ -1176,6 +1186,69 @@ export class MultiProjectDashboardServer {
         return stats;
       } catch (error: any) {
         return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // =====================
+    // Archetype API endpoints
+    // =====================
+
+    // GET /api/archetypes - List all available archetypes
+    this.app.get('/api/archetypes', async () => {
+      const archetypes = await archetypeRegistry.getAll();
+      return archetypes.map(a => ({
+        name: a.name,
+        displayName: a.displayName,
+        description: a.description
+      }));
+    });
+
+    // GET /api/projects/:projectId/archetype - Get current project archetype
+    this.app.get('/api/projects/:projectId/archetype', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      const archetype = await this.projectRegistry.getArchetype(projectId);
+      return { archetype };
+    });
+
+    // PUT /api/projects/:projectId/archetype - Set project archetype
+    this.app.put('/api/projects/:projectId/archetype', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const { archetype } = request.body as { archetype: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      if (!archetype || typeof archetype !== 'string') {
+        return reply.code(400).send({ error: 'archetype is required and must be a string' });
+      }
+
+      // Validate archetype exists
+      const archetypeDefinition = await archetypeRegistry.get(archetype);
+      if (!archetypeDefinition) {
+        return reply.code(400).send({ error: `Invalid archetype: '${archetype}' does not exist` });
+      }
+
+      try {
+        await this.projectRegistry.setArchetype(projectId, archetype);
+
+        // Broadcast archetype update to all clients subscribed to this project
+        this.broadcastToProject(projectId, {
+          type: 'archetype-update',
+          projectId,
+          data: { archetype }
+        });
+
+        return { success: true, archetype };
+      } catch (error: any) {
+        return reply.code(500).send({ error: `Failed to set archetype: ${error.message}` });
       }
     });
   }

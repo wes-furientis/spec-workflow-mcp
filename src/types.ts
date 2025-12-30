@@ -59,6 +59,7 @@ export interface ToolContext {
   projectPath: string;
   dashboardUrl?: string; // Optional for backwards compatibility
   lang?: string; // Language code for i18n (e.g., 'en', 'ja')
+  projectArchetype?: string; // Project archetype (e.g., 'generic', 'research-paper', 'web-app')
 }
 
 export interface SpecData {

@@ -2,6 +2,11 @@
   "documentTitle": "{{projectName}} Dashboard",
   "projectNameDefault": "Spec Workflow",
   "projectDescription": "Development workflow dashboard",
+  "archetype": {
+    "noArchetype": "No archetype set",
+    "change": "Change",
+    "configure": "Configure"
+  },
   "nav": {
     "statistics": "Statistics",
     "steering": "Steering",

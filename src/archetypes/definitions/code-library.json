@@ -1,0 +1,32 @@
+{
+  "name": "code-library",
+  "displayName": "Code Library",
+  "description": "Software libraries and packages. Emphasizes API documentation, versioning, and developer experience.",
+  "templates": {
+    "requirements": true,
+    "design": true,
+    "tasks": true
+  },
+  "steering": {
+    "required": ["product", "tech"],
+    "optional": ["structure"],
+    "custom": []
+  },
+  "guidance": {
+    "workflowEmphasis": [
+      "Design clean, intuitive public APIs",
+      "Plan for semantic versioning",
+      "Consider backward compatibility for consumers",
+      "Document all public interfaces thoroughly",
+      "Minimize dependencies and external requirements"
+    ],
+    "documentationFocus": "API reference documentation, usage examples, and integration guides for library consumers",
+    "keyConsiderations": [
+      "Is the public API intuitive and well-documented?",
+      "What breaking changes require major version bumps?",
+      "Are there clear usage examples for common scenarios?",
+      "How will consumers upgrade between versions?",
+      "What are the minimum requirements and dependencies?"
+    ]
+  }
+}
