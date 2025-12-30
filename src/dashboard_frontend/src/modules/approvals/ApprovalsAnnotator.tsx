@@ -410,11 +410,11 @@ export function ApprovalsAnnotator({ content, comments, onCommentsChange, viewMo
       <div data-section="annotations" className="lg:col-span-2">
 
         {/* Content Display */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
           {viewMode === 'preview' ? (
             <div className="p-4 sm:p-6">
               <div className="prose prose-sm sm:prose-base max-w-none dark:prose-invert prose-img:max-w-full prose-img:h-auto prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-code:text-gray-800 dark:prose-code:text-gray-200 prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900 prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300 prose-li:text-gray-700 dark:prose-li:text-gray-300">
-                <MDXEditorWrapper content={content || ""} mode="view" enableMermaid={true} />
+                <MDXEditorWrapper content={content || ""} mode="view" enableMermaid={true} height="auto" />
               </div>
             </div>
           ) : (

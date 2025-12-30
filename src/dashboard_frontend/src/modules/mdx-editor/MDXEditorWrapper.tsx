@@ -6,6 +6,7 @@ import {
   quotePlugin,
   linkPlugin,
   tablePlugin,
+  thematicBreakPlugin,
   codeBlockPlugin,
   codeMirrorPlugin,
   markdownShortcutPlugin,
@@ -407,6 +408,7 @@ export function MDXEditorWrapper({
       quotePlugin(),
       linkPlugin(),
       tablePlugin(),
+      thematicBreakPlugin(),
       codeBlockPlugin({
         codeBlockEditorDescriptors: [
           mermaidCodeBlockDescriptor,      // Mermaid diagrams (priority 1)
