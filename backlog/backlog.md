@@ -91,19 +91,6 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Medium
 - **Added**: 2025-12-30
 
-### 7. Claude Code Planning Tool Integration
-- **Description**: Integrate spec-workflow-mcp with Claude Code's planning capabilities (EnterPlanMode/ExitPlanMode) for a seamless planning-to-implementation workflow.
-- **Rationale**: Claude Code has powerful planning tools, and spec-workflow-mcp has structured spec documents. Integrating them would enable plans to inform specs and specs to guide planning, reducing context switching and improving workflow continuity.
-- **Potential scope** (4 levels):
-  - **Level 1 - Guidance**: Update spec-workflow-guide to suggest when to use Claude Code's plan mode based on archetype
-  - **Level 2 - Context Sharing**: Claude Code automatically reads steering docs when entering plan mode for archetype-aware planning
-  - **Level 3 - Bidirectional Protocol**: New MCP tool `suggest-plan-mode` that signals when tasks should be planned first; requires changes to both projects
-  - **Level 4 - Plan Import/Export**: Export Claude Code plans to requirements.md format; import spec-workflow tasks into Claude Code task tracking; two-way sync
-- **Dependencies**: Levels 3-4 would require coordination with Claude Code development
-- **Effort**: Level 1 (Low), Level 2 (Medium), Levels 3-4 (High)
-- **Added**: 2025-12-30
-- **Status**: Levels 1-4 implemented in planning-tools.ts
-
 ### 10. Archetype Lifecycle: Greenfield → Brownfield Transition
 - **Description**: Add version-based archetype transition with manual control. When version reaches 1.0.0, suggest (don't auto-change) transitioning from greenfield to brownfield archetype.
 - **Rationale**: Projects evolve from "building new" (greenfield) to "maintaining existing" (brownfield). The guidance should change accordingly, but the transition should be explicit and user-controlled.
