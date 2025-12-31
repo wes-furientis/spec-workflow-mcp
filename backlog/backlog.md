@@ -183,7 +183,17 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: High
 - **Added**: 2025-12-30
 
-### 17. Resume Workflow Tool with State Tracking
+### 17. Remove Template Overlap: structure.md vs conventions.md
+- **Description**: Refactor conventions.md template to remove sections that overlap with structure.md
+- **Rationale**: The conventions template has "Naming Conventions > Files & Directories" and "File Organization" sections that duplicate content covered in structure.md. Users shouldn't define the same thing twice.
+- **Potential scope**:
+  - Remove "Files & Directories" from Naming Conventions section
+  - Remove or replace "File Organization" section with reference to structure.md
+  - Clear separation: structure = where things go, conventions = how to write code
+- **Effort**: Low
+- **Added**: 2025-12-30
+
+### 18. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
