@@ -384,7 +384,21 @@ export class ApprovalStorage extends EventEmitter {
                   try {
                     const content = await fs.readFile(join(categoryPath, file), 'utf-8');
                     const approval = JSON.parse(content) as ApprovalRequest;
-                    approvals.push(approval);
+
+                    // Skip approvals for files that no longer exist
+                    if (approval.filePath) {
+                      const filePath = isAbsolute(approval.filePath)
+                        ? approval.filePath
+                        : join(this.projectPath, approval.filePath);
+                      try {
+                        await fs.access(filePath);
+                        approvals.push(approval);
+                      } catch {
+                        // File doesn't exist - skip this stale approval
+                      }
+                    } else {
+                      approvals.push(approval);
+                    }
                   } catch (error) {
                     // Error reading approval file
                   }
