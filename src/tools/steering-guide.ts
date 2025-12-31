@@ -10,7 +10,7 @@ import { join } from 'path';
 interface SteeringDocStatus {
   name: string;
   fileName: string;
-  status: 'missing' | 'pending-approval' | 'needs-revision' | 'complete' | 'unapproved';
+  status: 'not-created' | 'draft' | 'pending-approval' | 'needs-revision' | 'approved';
   requiresPlanning: boolean;
   description: string;
   approvalId?: string;
@@ -68,9 +68,9 @@ async function getDocStatus(
   let approvalId: string | undefined;
 
   if (!exists) {
-    status = 'missing';
+    status = 'not-created';
   } else if (latestApproval?.status === 'approved') {
-    status = 'complete';
+    status = 'approved';
   } else if (latestApproval?.status === 'pending') {
     status = 'pending-approval';
     approvalId = latestApproval.id;
@@ -78,7 +78,7 @@ async function getDocStatus(
     status = 'needs-revision';
     approvalId = latestApproval.id;
   } else {
-    status = 'unapproved';
+    status = 'draft';
   }
 
   return { name: docName, fileName, status, requiresPlanning, description, approvalId };
@@ -165,8 +165,8 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
   // Determine what to do next
   const pendingApproval = docs.find(d => d.status === 'pending-approval');
   const needsRevision = docs.find(d => d.status === 'needs-revision');
-  const unapproved = docs.find(d => d.status === 'unapproved');
-  const missing = docs.find(d => d.status === 'missing');
+  const draft = docs.find(d => d.status === 'draft');
+  const notCreated = docs.find(d => d.status === 'not-created');
 
   let nextAction: string;
   let blocked = false;
@@ -177,14 +177,14 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
   } else if (needsRevision) {
     nextAction = `BLOCKED: "${needsRevision.name}.md" needs revision. Update doc, then create new approval.`;
     blocked = true;
-  } else if (unapproved) {
-    nextAction = `"${unapproved.name}.md" exists but not approved. Submit for approval: approvals action:"request"`;
+  } else if (draft) {
+    nextAction = `"${draft.name}.md" exists but not approved. Submit for approval: approvals action:"request"`;
     blocked = true;
-  } else if (missing) {
-    if (missing.requiresPlanning) {
-      nextAction = `Create "${missing.name}.md" - PLANNING REQUIRED. Call: suggest-plan-mode taskDescription:"Create ${missing.name}.md"`;
+  } else if (notCreated) {
+    if (notCreated.requiresPlanning) {
+      nextAction = `Create "${notCreated.name}.md" - PLANNING REQUIRED. Call: suggest-plan-mode taskDescription:"Create ${notCreated.name}.md"`;
     } else {
-      nextAction = `Create "${missing.name}.md". Call: get-steering-template docName:"${missing.name}"`;
+      nextAction = `Create "${notCreated.name}.md". Call: get-steering-template docName:"${notCreated.name}"`;
     }
   } else {
     nextAction = 'All steering docs complete!';
@@ -197,11 +197,11 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
       archetype: archetype.name,
       documents: docs,
       summary: {
-        complete: docs.filter(d => d.status === 'complete').length,
-        missing: docs.filter(d => d.status === 'missing').length,
+        approved: docs.filter(d => d.status === 'approved').length,
+        notCreated: docs.filter(d => d.status === 'not-created').length,
+        draft: docs.filter(d => d.status === 'draft').length,
         pendingApproval: docs.filter(d => d.status === 'pending-approval').length,
-        needsRevision: docs.filter(d => d.status === 'needs-revision').length,
-        unapproved: docs.filter(d => d.status === 'unapproved').length
+        needsRevision: docs.filter(d => d.status === 'needs-revision').length
       }
     },
     nextSteps: [nextAction]
