@@ -161,12 +161,20 @@ export async function getPlanningContextHandler(args: any, context: ToolContext)
 
 export const suggestPlanModeTool: Tool = {
   name: 'suggest-plan-mode',
-  description: `Analyze a task and recommend whether Claude Code's planning mode should be used.
+  description: `REQUIRED: Check if Claude Code planning mode should be used before significant tasks.
 
-# Instructions
-Call this tool when starting a new task to get a recommendation on whether to use EnterPlanMode.
-Considers task complexity, archetype requirements, and number of files likely to be affected.
-Returns a recommendation with reasoning.`,
+# CRITICAL INSTRUCTIONS
+You MUST call this tool BEFORE:
+- Creating any steering document (architecture.md, conventions.md, documentation.md, etc.)
+- Implementing features that touch 3+ files
+- Making architectural decisions
+- Starting work on a new spec
+
+This tool analyzes task complexity and archetype requirements to determine if EnterPlanMode is needed.
+If the response returns recommendation: "required" or "strongly-recommended", you MUST use EnterPlanMode before proceeding.
+
+# When to Skip
+Only skip this check for trivial tasks like: typo fixes, single-line changes, adding comments.`,
   inputSchema: {
     type: 'object',
     properties: {

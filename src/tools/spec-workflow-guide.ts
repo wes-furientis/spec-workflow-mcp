@@ -284,31 +284,49 @@ flowchart TD
 
 ## Claude Code Planning Integration
 
-Before implementing complex features, consider using Claude Code's planning mode (\`EnterPlanMode\`) for better outcomes:
+**IMPORTANT**: Before significant tasks, you MUST call the \`suggest-plan-mode\` tool to check if planning mode is required.
 
-**When to Use Planning Mode**:
-- **Greenfield projects**: Always recommended - plan architecture before writing code
-- **Complex features**: Multi-file changes, new subsystems, architectural decisions
-- **Unfamiliar codebases**: Explore and understand before implementing
-- **Brownfield projects**: Plan migration strategies and backward compatibility
+### Required Planning Check
 
-**Planning Mode Benefits**:
-- Explore codebase thoroughly before committing to an approach
-- Get user approval on implementation strategy
-- Read steering docs (\`.spec-workflow/steering/\`) for project context
-- Design with full architectural awareness
+Call \`suggest-plan-mode\` BEFORE:
+- Creating any steering document
+- Implementing features that touch 3+ files
+- Making architectural decisions
+- Starting work on a new spec
 
-**Workflow Integration**:
-1. After spec approval (Phase 3 complete), consider \`EnterPlanMode\` before implementation
-2. In planning mode, read steering docs for project constraints and patterns
-3. Design implementation approach aligned with project archetype
-4. Exit planning mode and proceed with implementation (Phase 4)
+Example:
+\`\`\`
+Call suggest-plan-mode with taskDescription: "Implement optical ray tracing algorithm"
+\`\`\`
 
-**Steering Docs to Read During Planning**:
+If the response returns \`recommendation: "required"\` or \`recommendation: "strongly-recommended"\`, you MUST use \`EnterPlanMode\` before proceeding.
+
+### When Planning Mode is Triggered
+
+| Situation | Recommendation |
+|-----------|---------------|
+| Creating steering docs with \`requiresPlanning: true\` | Required |
+| Greenfield project + complex feature | Strongly recommended |
+| Multi-file changes (3+) | Recommended |
+| Brownfield project + migration | Recommended |
+| Simple bug fix or typo | Not needed |
+
+### Planning Mode Workflow
+
+1. Call \`suggest-plan-mode\` to check recommendation
+2. If required/recommended: Use \`EnterPlanMode\`
+3. Call \`get-planning-context\` to get list of steering docs to read
+4. Read relevant steering docs for project context
+5. Design implementation approach
+6. Exit planning mode with \`ExitPlanMode\`
+7. Proceed with implementation
+
+### Steering Docs to Read During Planning
+
 - \`product.md\` - Product vision and constraints
 - \`tech.md\` - Technology decisions and rationale
 - \`structure.md\` - Codebase organization
-- Archetype-specific docs (architecture.md, conventions.md, api.md, etc.)
+- Archetype-specific docs (architecture.md, conventions.md, documentation.md, etc.)
 
 ## Workflow Rules
 
@@ -325,7 +343,7 @@ Before implementing complex features, consider using Claude Code's planning mode
 - CRITICAL: Verbal approval is NEVER accepted - dashboard or VS Code extension only
 - NEVER proceed on user saying "approved" - check system status only
 - Steering docs are optional - only create when explicitly requested
-- Consider using Claude Code's EnterPlanMode before complex implementations
+- REQUIRED: Call suggest-plan-mode before significant tasks (steering docs, 3+ file changes, architectural decisions)
 
 ## File Structure
 \`\`\`
