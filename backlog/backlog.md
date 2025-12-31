@@ -319,7 +319,26 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Priority**: High (breaks revision workflow)
 - **Added**: 2025-12-30
 
-### 24. Resume Workflow Tool with State Tracking
+### 24. Prevent Implementation Audit Log from Growing Unbounded
+- **Description**: Add strategies to keep the implementation audit log manageable and prevent context bloat
+- **Rationale**: Logs accumulate over project lifetime. If agent reads logs for context, huge logs = wasted context window.
+- **Strategies**:
+  1. **Log rotation** - Archive logs older than N days, keep recent entries
+  2. **Summarization** - Periodically summarize old entries into a condensed "history" section
+  3. **Truncation** - Keep only last N entries per spec
+  4. **Tiered detail** - Recent logs = full detail, older logs = one-line summary
+  5. **Session boundaries** - Log per session, summarize when session ends
+  6. **Don't return full logs** - Return summary + line count, agent Reads if needed
+  7. **Separate files** - `implementation-log.md` (recent) + `implementation-archive.md` (old)
+- **Questions to answer**:
+  - How long should detailed logs be kept?
+  - What gets summarized vs discarded?
+  - Should summarization be automatic or manual?
+- **Files**: `src/tools/log-implementation.ts`
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 25. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
