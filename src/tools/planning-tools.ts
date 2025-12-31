@@ -281,7 +281,8 @@ export async function suggestPlanModeHandler(args: any, context: ToolContext): P
   }
 
   // Check if task is about creating a steering doc that requires planning
-  const steeringDocResult = checkSteeringDocPlanning(taskDescription, archetypeDefinition);
+  const projectPath = context.projectPath || process.cwd();
+  const steeringDocResult = await checkSteeringDocPlanning(taskDescription, archetypeDefinition, projectPath);
   if (steeringDocResult) {
     return steeringDocResult;
   }
@@ -601,13 +602,29 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 /**
+ * Create a planning marker file to track that planning was initiated
+ */
+async function createPlanningMarker(projectPath: string, docName: string): Promise<void> {
+  const planningDir = path.join(projectPath, '.spec-workflow', '.planning');
+  const markerPath = path.join(planningDir, `${docName}.complete`);
+  try {
+    await fs.mkdir(planningDir, { recursive: true });
+    await fs.writeFile(markerPath, new Date().toISOString(), 'utf-8');
+  } catch {
+    // Ignore errors - marker is best-effort
+  }
+}
+
+/**
  * Check if a task is about creating a steering doc that requires planning
  * Returns a ToolResponse if planning is required, null otherwise
+ * Creates a planning marker for docs that require planning
  */
-function checkSteeringDocPlanning(
+async function checkSteeringDocPlanning(
   taskDescription: string,
-  archetype?: ArchetypeDefinition
-): ToolResponse | null {
+  archetype: ArchetypeDefinition | undefined,
+  projectPath: string
+): Promise<ToolResponse | null> {
   // Check if task mentions creating/writing steering docs
   const steeringDocPatterns = [
     /creat(e|ing)\s+(\w+\.md|steering|documentation)/i,
@@ -660,6 +677,9 @@ function checkSteeringDocPlanning(
     // Check if this doc is mentioned in the task
     const docNamePattern = new RegExp(`${customDoc.name}(\\.md)?`, 'i');
     if (docNamePattern.test(taskDescription) && customDoc.requiresPlanning) {
+      // Create planning marker - this unlocks get-steering-template
+      await createPlanningMarker(projectPath, customDoc.name);
+
       // Build context files to read
       const contextFiles: string[] = [];
 
@@ -704,10 +724,10 @@ function checkSteeringDocPlanning(
         },
         nextSteps: [
           `Read context files: ${contextFiles.join(', ')}`,
-          'Use EnterPlanMode before creating the document',
-          'Design document structure and key sections',
+          'Use EnterPlanMode to design document structure',
           'Get user approval on document approach',
-          'Exit planning mode and create the document',
+          'Exit planning mode',
+          `Call: get-steering-template docName:"${customDoc.name}" to get template`,
           `Create: .spec-workflow/steering/${customDoc.name}.md`
         ]
       };
