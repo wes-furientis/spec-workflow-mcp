@@ -54,10 +54,16 @@ function validateSteeringDocDef(def: unknown, index: number): SteeringDocDef {
     throw new Error(`steering.custom[${index}].description must be a non-empty string`);
   }
 
+  // Validate optional planning fields
+  const requiresPlanning = typeof obj.requiresPlanning === 'boolean' ? obj.requiresPlanning : false;
+  const planningContext = isStringArray(obj.planningContext) ? obj.planningContext : [];
+
   return {
     name: obj.name,
     templateFile: obj.templateFile,
     description: obj.description,
+    requiresPlanning,
+    planningContext,
   };
 }
 
