@@ -4,22 +4,54 @@ import archetypeRegistry from '../archetypes/archetype-registry.js';
 import { promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { PathUtils } from '../core/path-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Session state for section-by-section planning
+ */
+interface PlanningSession {
+  docName: string;
+  templateFileName: string;
+  startedAt: string;
+  currentSection: number;
+  totalSections: number;
+  sections: TemplateSection[];
+  answers: Record<string, SectionAnswer>;
+  planningContext: string[];
+}
+
+interface TemplateSection {
+  index: number;
+  name: string;
+  content: string;
+  placeholders: string[];
+}
+
+interface SectionAnswer {
+  include: 'yes' | 'skip' | 'reference';
+  referenceDoc?: string;
+  customContent?: string;
+  notes?: string;
+}
+
 export const getSteeringTemplateTool: Tool = {
   name: 'get-steering-template',
-  description: `Get the template for a steering document.
+  description: `Start or continue planning a steering document section-by-section.
 
-For documents that require planning, you must complete planning first.
-Call steering-guide to see which docs require planning.`,
+This tool walks you through each template section interactively:
+- First call: starts planning session, returns section 1
+- You MUST ask the user about each section before proceeding
+- Call steering-planning-respond with answers to get next section
+- After all sections: generates draft for approval
+
+DO NOT skip sections or make decisions for the user.`,
   inputSchema: {
     type: 'object',
     properties: {
       docName: {
         type: 'string',
-        description: 'Name of the steering document (e.g., "product", "conventions", "documentation")'
+        description: 'Name of the steering document (e.g., "conventions", "documentation")'
       }
     },
     required: ['docName'],
@@ -28,9 +60,9 @@ Call steering-guide to see which docs require planning.`,
 };
 
 /**
- * Check if planning was completed for a doc
+ * Check if planning marker exists (from suggest-plan-mode)
  */
-async function isPlanningComplete(projectPath: string, docName: string): Promise<boolean> {
+async function isPlanningMarkerSet(projectPath: string, docName: string): Promise<boolean> {
   const markerPath = join(projectPath, '.spec-workflow', '.planning', `${docName}.complete`);
   try {
     await fs.access(markerPath);
@@ -41,7 +73,30 @@ async function isPlanningComplete(projectPath: string, docName: string): Promise
 }
 
 /**
- * Read template content
+ * Get existing session or null
+ */
+async function getSession(projectPath: string, docName: string): Promise<PlanningSession | null> {
+  const sessionPath = join(projectPath, '.spec-workflow', '.planning', `${docName}-session.json`);
+  try {
+    const content = await fs.readFile(sessionPath, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save session state
+ */
+async function saveSession(projectPath: string, session: PlanningSession): Promise<void> {
+  const planningDir = join(projectPath, '.spec-workflow', '.planning');
+  await fs.mkdir(planningDir, { recursive: true });
+  const sessionPath = join(planningDir, `${session.docName}-session.json`);
+  await fs.writeFile(sessionPath, JSON.stringify(session, null, 2), 'utf-8');
+}
+
+/**
+ * Read template content from various locations
  */
 async function readTemplate(templateFileName: string, projectPath: string): Promise<string | null> {
   // First check user-templates
@@ -69,6 +124,126 @@ async function readTemplate(templateFileName: string, projectPath: string): Prom
   }
 }
 
+/**
+ * Parse template into sections based on ## headers
+ */
+function parseTemplateSections(content: string): TemplateSection[] {
+  const sections: TemplateSection[] = [];
+  const lines = content.split('\n');
+
+  let currentSection: TemplateSection | null = null;
+  let currentContent: string[] = [];
+  let sectionIndex = 0;
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      // Save previous section
+      if (currentSection) {
+        currentSection.content = currentContent.join('\n').trim();
+        currentSection.placeholders = extractPlaceholders(currentSection.content);
+        sections.push(currentSection);
+      }
+
+      // Start new section
+      currentSection = {
+        index: sectionIndex++,
+        name: line.replace('## ', '').trim(),
+        content: '',
+        placeholders: []
+      };
+      currentContent = [];
+    } else if (currentSection) {
+      currentContent.push(line);
+    }
+    // Skip content before first ## (like # Title)
+  }
+
+  // Don't forget last section
+  if (currentSection) {
+    currentSection.content = currentContent.join('\n').trim();
+    currentSection.placeholders = extractPlaceholders(currentSection.content);
+    sections.push(currentSection);
+  }
+
+  return sections;
+}
+
+/**
+ * Extract placeholder text from [...] patterns
+ */
+function extractPlaceholders(content: string): string[] {
+  const matches = content.match(/\[([^\]]+)\]/g) || [];
+  return matches
+    .map(m => m.slice(1, -1))
+    .filter(m => m.startsWith('e.g.,') || m.startsWith('Purpose') || m.startsWith('Rule') || !m.includes('/'));
+}
+
+/**
+ * Read approved context documents
+ */
+async function readContextDocs(projectPath: string, docNames: string[]): Promise<Record<string, string>> {
+  const context: Record<string, string> = {};
+  for (const docName of docNames) {
+    const filePath = join(projectPath, '.spec-workflow', 'steering', `${docName}.md`);
+    try {
+      context[docName] = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      // Doc doesn't exist
+    }
+  }
+  return context;
+}
+
+/**
+ * Format a section for presentation to user
+ */
+function formatSectionForUser(
+  section: TemplateSection,
+  currentIndex: number,
+  totalSections: number,
+  contextDocs: Record<string, string>
+): { sectionInfo: any; questions: string[] } {
+
+  // Check if any context docs mention this section topic
+  const relevantContext: Record<string, string> = {};
+  const sectionKeywords = section.name.toLowerCase().split(' ');
+
+  for (const [docName, content] of Object.entries(contextDocs)) {
+    const lowerContent = content.toLowerCase();
+    if (sectionKeywords.some(kw => kw.length > 3 && lowerContent.includes(kw))) {
+      // Extract relevant snippet (first 500 chars mentioning the keyword)
+      const matchIdx = lowerContent.indexOf(sectionKeywords.find(kw => kw.length > 3 && lowerContent.includes(kw)) || '');
+      if (matchIdx !== -1) {
+        const start = Math.max(0, matchIdx - 100);
+        const end = Math.min(content.length, matchIdx + 400);
+        relevantContext[docName] = content.slice(start, end) + '...';
+      }
+    }
+  }
+
+  const questions = [
+    `Include "${section.name}" section in this document?`,
+    'Options: (1) Yes, include (2) Skip this section (3) Reference another doc instead',
+    'What specific content or customizations do you want for this section?'
+  ];
+
+  if (section.placeholders.length > 0) {
+    questions.push(`Template suggests: ${section.placeholders.slice(0, 3).join(', ')}${section.placeholders.length > 3 ? '...' : ''}`);
+  }
+
+  return {
+    sectionInfo: {
+      sectionNumber: currentIndex + 1,
+      totalSections,
+      sectionName: section.name,
+      templateContent: section.content,
+      placeholders: section.placeholders,
+      relevantFromApprovedDocs: Object.keys(relevantContext).length > 0 ? relevantContext : undefined
+    },
+    questions
+  };
+}
+
 export async function getSteeringTemplateHandler(args: { docName: string }, context: ToolContext): Promise<ToolResponse> {
   const { docName } = args;
 
@@ -80,7 +255,6 @@ export async function getSteeringTemplateHandler(args: { docName: string }, cont
     };
   }
 
-  // Need archetype to know template file and planning requirements
   if (!context.projectArchetype) {
     return {
       success: false,
@@ -100,28 +274,23 @@ export async function getSteeringTemplateHandler(args: { docName: string }, cont
 
   const projectPath = context.projectPath || process.cwd();
 
-  // Find the doc in archetype config
+  // Find doc config
   let templateFileName: string;
   let requiresPlanning = false;
   let planningContext: string[] = [];
 
-  // Check standard docs
   const standardDocs = [...archetype.steering.required, ...archetype.steering.optional];
   if (standardDocs.includes(docName)) {
     templateFileName = `${docName}-template.md`;
     requiresPlanning = false;
   } else {
-    // Check custom docs
     const customDoc = archetype.steering.custom.find(d => d.name === docName);
     if (!customDoc) {
       return {
         success: false,
         message: `Unknown steering document: ${docName}`,
         data: {
-          validDocs: [
-            ...standardDocs,
-            ...archetype.steering.custom.map(d => d.name)
-          ]
+          validDocs: [...standardDocs, ...archetype.steering.custom.map(d => d.name)]
         },
         nextSteps: ['Call steering-guide to see available documents']
       };
@@ -131,13 +300,13 @@ export async function getSteeringTemplateHandler(args: { docName: string }, cont
     planningContext = customDoc.planningContext ?? [];
   }
 
-  // Check if planning is required and not done
+  // Check if planning marker is set (for docs that require planning)
   if (requiresPlanning) {
-    const planningDone = await isPlanningComplete(projectPath, docName);
-    if (!planningDone) {
+    const markerSet = await isPlanningMarkerSet(projectPath, docName);
+    if (!markerSet) {
       return {
         success: false,
-        message: `Planning required for ${docName}.md`,
+        message: `Planning mode required for ${docName}.md`,
         data: {
           docName,
           requiresPlanning: true,
@@ -145,36 +314,83 @@ export async function getSteeringTemplateHandler(args: { docName: string }, cont
         },
         nextSteps: [
           `Call: suggest-plan-mode taskDescription:"Create ${docName}.md steering document"`,
-          'Complete planning phase',
+          'Enter planning mode',
           'Then call get-steering-template again'
         ]
       };
     }
   }
 
-  // Read the template
-  const templateContent = await readTemplate(templateFileName, projectPath);
-  if (!templateContent) {
+  // Check for existing session
+  let session = await getSession(projectPath, docName);
+
+  if (!session) {
+    // Start new session - parse template into sections
+    const templateContent = await readTemplate(templateFileName, projectPath);
+    if (!templateContent) {
+      return {
+        success: false,
+        message: `Template not found: ${templateFileName}`,
+        nextSteps: ['Check if templates are installed correctly']
+      };
+    }
+
+    const sections = parseTemplateSections(templateContent);
+    if (sections.length === 0) {
+      return {
+        success: false,
+        message: 'Template has no sections to plan',
+        nextSteps: ['Check template format']
+      };
+    }
+
+    session = {
+      docName,
+      templateFileName,
+      startedAt: new Date().toISOString(),
+      currentSection: 0,
+      totalSections: sections.length,
+      sections,
+      answers: {},
+      planningContext
+    };
+
+    await saveSession(projectPath, session);
+  }
+
+  // Get current section
+  const currentSection = session.sections[session.currentSection];
+  if (!currentSection) {
     return {
       success: false,
-      message: `Template not found: ${templateFileName}`,
-      nextSteps: ['Check if templates are installed correctly']
+      message: 'Invalid session state',
+      nextSteps: ['Delete session file and restart planning']
     };
   }
 
+  // Read context docs for relevant info
+  const contextDocs = await readContextDocs(projectPath, session.planningContext);
+  const { sectionInfo, questions } = formatSectionForUser(
+    currentSection,
+    session.currentSection,
+    session.totalSections,
+    contextDocs
+  );
+
   return {
     success: true,
-    message: `Template loaded for ${docName}.md`,
+    message: `Section ${session.currentSection + 1} of ${session.totalSections}: ${currentSection.name}`,
     data: {
+      planning: true,
       docName,
-      templateFileName,
-      outputPath: `.spec-workflow/steering/${docName}.md`,
-      template: templateContent
+      ...sectionInfo,
+      questionsToAsk: questions,
+      instruction: 'ASK THE USER these questions. Do NOT decide for them. Wait for their answers before calling steering-planning-respond.'
     },
     nextSteps: [
-      `Create document at: .spec-workflow/steering/${docName}.md`,
-      'Follow template structure',
-      'Submit for approval when complete'
+      `ASK USER: "${questions[0]}"`,
+      'Wait for user response',
+      `Then call: steering-planning-respond docName:"${docName}" include:"yes|skip|reference" notes:"user's specific requirements"`
     ]
   };
 }
