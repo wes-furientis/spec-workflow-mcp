@@ -21,3 +21,13 @@ All completed items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
   - Level 2: Context sharing with steering docs
   - Level 3: Bidirectional protocol
   - Level 4: Plan import/export
+
+### #23 - Fix Approval Revision Comments Not Being Saved
+- **Added**: 2025-12-30
+- **Completed**: 2025-12-31T14:30:00Z
+- **Description**: Fix dashboard not loading existing revision comments when reopening an approval
+- **Root Cause**: Comments were correctly saved to JSON but React state was initialized empty and never loaded from approval object
+- **Implementation**:
+  - Added `useEffect` in `ApprovalsPage.tsx` to load `a.comments` into local state
+  - Extended `Approval` type in `api.tsx` with `comments`, `response`, `annotations` fields
+  - Added 8 unit tests verifying comment persistence and retrieval

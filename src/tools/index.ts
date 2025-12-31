@@ -12,6 +12,7 @@ import {
   exportPlanTool, exportPlanHandler,
   importPlanTool, importPlanHandler
 } from './planning-tools.js';
+import { resumeWorkflowTool, resumeWorkflowHandler } from './resume-workflow.js';
 import { ToolContext, ToolResponse, MCPToolResponse, toMCPResponse } from '../types.js';
 
 export function registerTools(): Tool[] {
@@ -27,7 +28,9 @@ export function registerTools(): Tool[] {
     getPlanningContextTool,
     suggestPlanModeTool,
     exportPlanTool,
-    importPlanTool
+    importPlanTool,
+    // Workflow state tools
+    resumeWorkflowTool
   ];
 }
 
@@ -70,6 +73,9 @@ export async function handleToolCall(name: string, args: any, context: ToolConte
         break;
       case 'import-plan':
         response = await importPlanHandler(args, context);
+        break;
+      case 'resume-workflow':
+        response = await resumeWorkflowHandler(args, context);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

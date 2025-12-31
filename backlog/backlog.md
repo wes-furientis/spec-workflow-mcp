@@ -295,27 +295,6 @@ Historical items before 2025-12-31 have date-only timestamps.
 - **Priority**: Medium (affects usability)
 - **Added**: 2025-12-30
 
-### 23. Fix Approval Revision Comments Not Being Saved
-- **Description**: When requesting revisions on an approval, the revision comment is not saved to the log
-- **Rationale**: Revision feedback is critical context for the agent to address issues. If comments aren't persisted, agent doesn't know what to fix.
-- **Symptoms observed**:
-  - Agent submitted Tasks as "Updated Tasks" (generic title)
-  - User requested revisions with comments
-  - Comments not visible in approval log/history
-- **Issues to investigate**:
-  1. Are revision comments being passed to `updateApproval()`?
-  2. Are comments stored in the approval JSON?
-  3. Is the dashboard UI displaying stored comments?
-  4. Is the agent reading revision feedback when resuming?
-- **Related**: Approval titles should be more specific than "Updated Tasks"
-- **Files to investigate**:
-  - `src/dashboard/approval-storage.ts` - updateApproval(), revisionHistory
-  - `src/tools/approvals.ts` - how revisions are handled
-  - Dashboard approval UI components
-- **Effort**: Medium
-- **Priority**: High (breaks revision workflow)
-- **Added**: 2025-12-30
-
 ### 24. Prevent Implementation Audit Log from Growing Unbounded
 - **Description**: Add strategies to keep the implementation audit log manageable and prevent context bloat
 - **Rationale**: Logs accumulate over project lifetime. If agent reads logs for context, huge logs = wasted context window.
