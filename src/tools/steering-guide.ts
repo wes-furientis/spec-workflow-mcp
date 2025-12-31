@@ -170,7 +170,7 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
   let blocked = false;
 
   if (!nextDoc) {
-    nextAction = 'All steering docs complete!';
+    nextAction = 'All steering docs complete! Ready to create specs. Call: spec-workflow-guide to start requirements/design/tasks workflow.';
   } else {
     switch (nextDoc.status) {
       case 'pending-approval':
