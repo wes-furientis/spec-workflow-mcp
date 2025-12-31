@@ -367,3 +367,16 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Medium-High
 - **Added**: 2025-12-30
 
+### 26. Normalize Approval Titles
+- **Description**: Default approval titles to filename when agent provides arbitrary/creative titles
+- **Rationale**: Agents create approvals with creative titles like "Revised tasks.md - documentation.md alignment" instead of predictable names. This is a UX annoyance (hard to scan approval list) but not breaking - matching uses `filePath`, not `title`.
+- **Fix**: In `approval-storage.ts createApproval()`, normalize title:
+  ```typescript
+  const normalizedTitle = title || basename(filePath).replace('.md', '');
+  ```
+- **Alternative**: Could also validate title matches filename pattern and warn/override if not
+- **Files**: `src/dashboard/approval-storage.ts`
+- **Effort**: Low (single line change + optional validation)
+- **Priority**: Low (cosmetic)
+- **Added**: 2025-12-30
+
