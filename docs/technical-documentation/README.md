@@ -26,7 +26,7 @@
   "mcpServers": {
     "spec-workflow": {
       "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/project", "--AutoStartDashboard"]
+      "args": ["-y", "spec-workflow-mcp (local)", "/path/to/project", "--AutoStartDashboard"]
     }
   }
 }
@@ -265,7 +265,7 @@ npm run compile
 ## 🤝 Getting Help
 
 1. **Check the [Troubleshooting Guide](troubleshooting.md)** first
-2. **Search existing [GitHub Issues](https://github.com/Pimzino/spec-workflow-mcp/issues)**
+2. **Search existing [GitHub Issues](https://github.com/wes-furientis/spec-workflow-mcp/issues)**
 3. **Create a new issue** with detailed reproduction steps
 4. **Join the community** for real-time support
 

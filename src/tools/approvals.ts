@@ -21,7 +21,7 @@ function safeTranslatePath(path: string): string {
     throw new Error(
       `PathUtils.translatePath is not available (got ${typeof PathUtils?.translatePath}). ` +
       'This may indicate a module loading issue. Please reinstall the package with: ' +
-      'npm uninstall @pimzino/spec-workflow-mcp && npm install @pimzino/spec-workflow-mcp'
+      'npm run build (from the spec-workflow-mcp directory)'
     );
   }
   return PathUtils.translatePath(path);

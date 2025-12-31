@@ -7,16 +7,16 @@ This guide covers all configuration options for Spec Workflow MCP.
 ### Basic Usage
 
 ```bash
-npx -y @pimzino/spec-workflow-mcp@latest [project-path] [options]
+node dist/index.js [project-path] [options]
 ```
 
 ### Available Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--help` | Show comprehensive usage information | `npx -y @pimzino/spec-workflow-mcp@latest --help` |
-| `--dashboard` | Run dashboard-only mode (default port: 5000) | `npx -y @pimzino/spec-workflow-mcp@latest --dashboard` |
-| `--port <number>` | Specify custom dashboard port (1024-65535) | `npx -y @pimzino/spec-workflow-mcp@latest --dashboard --port 8080` |
+| `--help` | Show comprehensive usage information | `node dist/index.js --help` |
+| `--dashboard` | Run dashboard-only mode (default port: 5000) | `node dist/index.js --dashboard` |
+| `--port <number>` | Specify custom dashboard port (1024-65535) | `node dist/index.js --dashboard --port 8080` |
 
 ### Important Notes
 
@@ -31,19 +31,19 @@ npx -y @pimzino/spec-workflow-mcp@latest [project-path] [options]
 1. **Start the Dashboard** (do this first, only once):
 ```bash
 # Uses default port 5000
-npx -y @pimzino/spec-workflow-mcp@latest --dashboard
+node dist/index.js --dashboard
 ```
 
 2. **Start MCP Servers** (one per project, in separate terminals):
 ```bash
 # Project 1
-npx -y @pimzino/spec-workflow-mcp@latest ~/projects/app1
+node dist/index.js ~/projects/app1
 
 # Project 2
-npx -y @pimzino/spec-workflow-mcp@latest ~/projects/app2
+node dist/index.js ~/projects/app2
 
 # Project 3
-npx -y @pimzino/spec-workflow-mcp@latest ~/projects/app3
+node dist/index.js ~/projects/app3
 ```
 
 All projects will appear in the dashboard at http://localhost:5000
@@ -54,7 +54,7 @@ Only use a custom port if port 5000 is unavailable:
 
 ```bash
 # Start dashboard on port 8080
-npx -y @pimzino/spec-workflow-mcp@latest --dashboard --port 8080
+node dist/index.js --dashboard --port 8080
 ```
 
 ## Environment Variables
@@ -78,13 +78,13 @@ Override the default global state directory (`~/.spec-workflow-mcp`). This is us
 
 ```bash
 # Absolute path
-SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-mcp@latest /workspace
+SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp node dist/index.js /workspace
 
 # Relative path (resolved against current working directory)
-SPEC_WORKFLOW_HOME=./.spec-workflow-mcp npx -y @pimzino/spec-workflow-mcp@latest .
+SPEC_WORKFLOW_HOME=./.spec-workflow-mcp node dist/index.js .
 
 # For dashboard mode
-SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-mcp@latest --dashboard
+SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp node dist/index.js --dashboard
 ```
 
 **Sandboxed environments (e.g., Codex CLI):**
@@ -92,7 +92,7 @@ SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-m
 When running in sandboxed environments like Codex CLI with `sandbox_mode=workspace-write`, set `SPEC_WORKFLOW_HOME` to a writable location within your workspace:
 
 ```bash
-SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-mcp@latest /workspace
+SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp node dist/index.js /workspace
 ```
 
 ## Dashboard Session Management
@@ -218,10 +218,10 @@ lang = "en"
 3. Use the configuration:
 ```bash
 # Uses .spec-workflow/config.toml automatically
-npx -y @pimzino/spec-workflow-mcp@latest
+node dist/index.js
 
 # Or specify explicitly
-npx -y @pimzino/spec-workflow-mcp@latest --config .spec-workflow/config.toml
+node dist/index.js --config .spec-workflow/config.toml
 ```
 
 ## Configuration Precedence
@@ -242,7 +242,7 @@ port = 3000
 
 ```bash
 # Command-line argument overrides config file
-npx -y @pimzino/spec-workflow-mcp@latest --config config.toml --port 4000
+node dist/index.js --config config.toml --port 4000
 # Result: port = 4000 (CLI wins)
 ```
 
@@ -263,7 +263,7 @@ verboseLogging = true
 
 Usage:
 ```bash
-npx -y @pimzino/spec-workflow-mcp@latest --config dev-config.toml
+node dist/index.js --config dev-config.toml
 ```
 
 ### Production Configuration
@@ -281,7 +281,7 @@ verboseLogging = false
 
 Usage:
 ```bash
-npx -y @pimzino/spec-workflow-mcp@latest --config prod-config.toml
+node dist/index.js --config prod-config.toml
 ```
 
 ## Port Configuration
@@ -344,7 +344,7 @@ Use a shared configuration with overrides:
 ~/configs/spec-workflow-base.toml
 
 # Project-specific overrides
-npx -y @pimzino/spec-workflow-mcp@latest \
+node dist/index.js \
   --config ~/configs/spec-workflow-base.toml \
   --port 3000 \
   /path/to/project-a

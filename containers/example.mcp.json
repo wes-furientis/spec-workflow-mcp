@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@pimzino/spec-workflow-mcp@latest",
+        "spec-workflow-mcp (local)",
         "/path/to/your/project"
       ]
     }

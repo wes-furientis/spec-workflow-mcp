@@ -91,15 +91,6 @@ function Header({ toggleSidebar }: { toggleSidebar: () => void }) {
                 {theme === 'dark' ? t('theme.dark') : t('theme.light')}
               </button>
 
-              <a
-                href="https://buymeacoffee.com/pimzino"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-sm font-medium rounded-lg transition-colors"
-                title={t('support.project')}
-              >
-                {t('support.me')}
-              </a>
             </div>
 
             {/* Mobile/Tablet Settings Menu Button */}
@@ -160,18 +151,6 @@ function Header({ toggleSidebar }: { toggleSidebar: () => void }) {
                   <button onClick={toggleTheme} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     {theme === 'dark' ? t('theme.dark') : t('theme.light')}
                   </button>
-                </div>
-
-                <div className="pt-2">
-                  <a
-                    href="https://buymeacoffee.com/pimzino"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center px-4 py-3 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-sm font-medium rounded-lg transition-colors"
-                    title={t('support.project')}
-                  >
-                    {t('support.me')}
-                  </a>
                 </div>
 
                 {info?.version && (
@@ -276,7 +255,7 @@ function AppInner() {
                     Start MCP servers to see projects here.
                   </p>
                   <div className="text-sm text-gray-500 dark:text-gray-500">
-                    Run: <code className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">npx @pimzino/spec-workflow-mcp /path/to/project</code>
+                    Run: <code className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">node dist/index.js /path/to/project</code>
                   </div>
                 </div>
               </div>
