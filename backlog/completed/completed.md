@@ -47,3 +47,15 @@ All completed items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
   - 14 unit tests for workflow state management
 - **State file**: `.spec-workflow/state.json`
 - **Remaining**: Dashboard view showing workflow state (nice-to-have)
+
+### #20 - Reduce Context Usage in MCP Tool Responses
+- **Added**: 2025-12-30
+- **Completed**: 2025-12-31T14:40:00Z
+- **Description**: Audit and slim down tool responses to minimize context consumption
+- **Implementation**:
+  - `get-steering-template.ts`: Changed `templateContent` to `templateSummary` (line count + first line preview)
+  - `steering-planning-respond.ts`: Same change for consistency
+  - Both tools: Changed `relevantFromApprovedDocs` (500 char snippets) to `relevantDocsHints` (file path + line number)
+  - Limited placeholders to 5 max
+- **Pattern adopted**: Return paths/summaries, agent calls Read if needed
+- **Already efficient**: steering-guide, get-planning-context (return status, not content)
