@@ -325,13 +325,22 @@ export async function steeringPlanningRespondHandler(
       previousSection: currentSection.name,
       previousAnswer: include,
       ...sectionInfo,
-      questionsToAsk: questions,
-      instruction: 'ASK THE USER these questions. Do NOT decide for them. Wait for their answers.'
+      useAskUserQuestion: {
+        question: `Section ${session.currentSection + 1}/${session.totalSections}: Include "${nextSection.name}" in ${docName}.md?`,
+        header: nextSection.name,
+        options: [
+          { label: 'Yes, include', description: 'Include this section with template structure' },
+          { label: 'Skip section', description: 'Omit this section entirely' },
+          { label: 'Reference other doc', description: 'Point to another steering doc instead' }
+        ],
+        followUp: 'Any specific content or customizations for this section?'
+      },
+      instruction: 'YOU MUST use the AskUserQuestion tool to present these options. Do NOT just print them as text.'
     },
     nextSteps: [
-      `ASK USER: "${questions[0]}"`,
-      'Wait for user response',
-      `Then call: steering-planning-respond docName:"${docName}" include:"yes|skip|reference" notes:"user's specific requirements"`
+      'Call AskUserQuestion with the options provided in useAskUserQuestion',
+      'Wait for user selection',
+      `Then call: steering-planning-respond docName:"${docName}" include:"yes|skip|reference" notes:"user's answer"`
     ]
   };
 }
