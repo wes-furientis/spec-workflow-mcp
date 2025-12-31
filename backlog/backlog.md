@@ -220,7 +220,24 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Low
 - **Added**: 2025-12-30
 
-### 19. Resume Workflow Tool with State Tracking
+### 19. Generalize Validation Cases Section in Documentation Template
+- **Description**: Rewrite the "Validation Cases" section in documentation.md template to be more general-purpose
+- **Rationale**: Current section is too focused on physics/math proofs. Validation should cover any way to demonstrate software works as intended.
+- **New framing**:
+  - E2E cases that confirm the software works as claimed
+  - Links/references to authoritative sources where applicable
+  - Could be physics proofs, math derivations, OR just showing certain data types are handled correctly
+  - Focus: "does the software do what it says it does?" with evidence
+- **Examples to include**:
+  - Mathematical/physics validation (current focus)
+  - Data handling validation (input X produces expected output Y)
+  - Compliance validation (meets spec/standard X)
+  - Integration validation (works correctly with external system Y)
+- **File**: `src/markdown/templates/documentation.md`
+- **Effort**: Low
+- **Added**: 2025-12-30
+
+### 20. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
