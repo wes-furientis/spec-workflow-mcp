@@ -192,10 +192,15 @@ ${docsRequiringPlanning.map(d => `- **${d.name}.md** (context: ${d.planningConte
     generateCustomDocPhase(doc, index + 4, customDocs.length + 3) // Phase 4+ after product/tech/structure
   );
 
-  // Generate file structure
-  const standardFiles = ['product.md', 'tech.md', 'structure.md'];
-  const customFiles = customDocs.map(d => `${d.name}.md`);
-  const allFiles = [...standardFiles, ...customFiles];
+  // Generate file structure - standard templates use -template suffix, custom templates use templateFile directly
+  const standardTemplateFiles = ['product-template.md', 'tech-template.md', 'structure-template.md'];
+  const customTemplateFiles = customDocs.map(d => d.templateFile);
+  const allTemplateFiles = [...standardTemplateFiles, ...customTemplateFiles];
+
+  // Steering doc output files (without -template suffix)
+  const standardSteeringFiles = ['product.md', 'tech.md', 'structure.md'];
+  const customSteeringFiles = customDocs.map(d => `${d.name}.md`);
+  const allSteeringFiles = [...standardSteeringFiles, ...customSteeringFiles];
 
   return `# Steering Workflow - ${archetype.displayName}
 
@@ -303,9 +308,9 @@ ${customPhases.join('\n\n')}
 \`\`\`
 .spec-workflow/
 ├── templates/           # Auto-populated on server start
-${allFiles.map(f => `│   └── ${f.replace('.md', '-template.md')}`).join('\n')}
+${allTemplateFiles.map(f => `│   └── ${f}`).join('\n')}
 └── steering/
-${allFiles.map(f => `    └── ${f}`).join('\n')}
+${allSteeringFiles.map(f => `    └── ${f}`).join('\n')}
 \`\`\``;
 }
 
