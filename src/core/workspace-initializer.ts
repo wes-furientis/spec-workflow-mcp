@@ -52,7 +52,7 @@ export class WorkspaceInitializer {
   private async initializeTemplates(archetype?: string): Promise<void> {
     const templatesDir = join(PathUtils.getWorkflowRoot(this.projectPath), 'templates');
 
-    // Steering templates are always copied (not archetype-specific)
+    // Standard steering templates are always copied
     const steeringTemplates = [
       'product-template',
       'tech-template',
@@ -68,6 +68,7 @@ export class WorkspaceInitializer {
 
     // Determine which spec templates to copy based on archetype
     let specTemplatesToCopy: string[];
+    let customSteeringTemplates: string[] = [];
 
     if (archetype) {
       // Get enabled templates for this archetype
@@ -79,13 +80,21 @@ export class WorkspaceInitializer {
         const templateType = template.replace('-template', '');
         return enabledTemplates.includes(templateType);
       });
+
+      // Also get custom steering templates from archetype definition
+      const archetypeDefinition = await archetypeRegistry.get(archetype);
+      if (archetypeDefinition?.steering?.custom) {
+        customSteeringTemplates = archetypeDefinition.steering.custom
+          .map(doc => doc.templateFile.replace('.md', ''))
+          .filter(name => name.length > 0);
+      }
     } else {
       // No archetype specified - copy all templates (backward compatible)
       specTemplatesToCopy = allSpecTemplates;
     }
 
-    // Copy all enabled templates
-    const allTemplatesToCopy = [...specTemplatesToCopy, ...steeringTemplates];
+    // Copy all enabled templates (standard + archetype-specific custom steering)
+    const allTemplatesToCopy = [...specTemplatesToCopy, ...steeringTemplates, ...customSteeringTemplates];
 
     for (const template of allTemplatesToCopy) {
       await this.copyTemplate(template, templatesDir);
