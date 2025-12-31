@@ -102,4 +102,84 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Dependencies**: Levels 3-4 would require coordination with Claude Code development
 - **Effort**: Level 1 (Low), Level 2 (Medium), Levels 3-4 (High)
 - **Added**: 2025-12-30
+- **Status**: Levels 1-4 implemented in planning-tools.ts
+
+### 10. Archetype Lifecycle: Greenfield → Brownfield Transition
+- **Description**: Add version-based archetype transition with manual control. When version reaches 1.0.0, suggest (don't auto-change) transitioning from greenfield to brownfield archetype.
+- **Rationale**: Projects evolve from "building new" (greenfield) to "maintaining existing" (brownfield). The guidance should change accordingly, but the transition should be explicit and user-controlled.
+- **Potential scope**:
+  - Detect version bump to 1.0.0 and prompt user to transition
+  - `transition-archetype` tool or dashboard action
+  - Add transition note to steering docs
+  - Versioning remains manual (user edits package.json)
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 11. Steering Doc Re-Review Workflow on Transition
+- **Description**: When transitioning from greenfield to brownfield, trigger a review workflow for all existing steering documents.
+- **Rationale**: Steering docs created during greenfield should be reviewed and potentially annotated when entering maintenance mode. This ensures the "why we built it this way" context is preserved and marked as established patterns.
+- **Potential scope**:
+  - Trigger approval workflow for each steering doc on archetype transition
+  - Add transition callouts to reviewed docs
+  - Mark sections as "established pattern" vs "open for revision"
+- **Depends on**: Item #10 (Archetype Lifecycle)
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 12. Branch-Aware Guidance
+- **Description**: Detect current git branch pattern and adjust archetype guidance accordingly.
+- **Rationale**: Feature branches are "greenfield-ish" (building something new) even in a brownfield project. Branch context can inform whether to give "establish patterns" or "follow existing patterns" guidance.
+- **Potential scope**:
+  - Detect branch pattern: main/release (brownfield), feature/* (greenfield-ish), hotfix/* (minimal)
+  - Adjust `suggest-plan-mode` and `spec-workflow-guide` output based on branch
+  - Configurable branch-to-guidance mappings
+  - No merge-time action gates (merge is just a git operation)
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 13. Git-Based Change Awareness Highlighting
+- **Description**: Show subtle visual highlighting in steering docs for sections that changed since last version/merge, with mouse-over details.
+- **Rationale**: After merges, users should be passively aware of what changed without being forced to take action. Helps maintain awareness of documentation drift.
+- **Potential scope**:
+  - Git blame integration to detect what sections changed and when
+  - Subtle background tint on changed sections in dashboard preview
+  - Mouse-over tooltip: "Modified in feature/X merge, Dec 30"
+  - Compare to last git tag for "changed since v1.0.0" view
+  - Highlighting fades over time as changes age
+- **Effort**: Medium-High
+- **Added**: 2025-12-30
+
+### 14. Markdown Callout Blocks (Annotations Phase 1)
+- **Description**: Support GitHub-style alert blocks ([!NOTE], [!WARNING], [!IMPORTANT]) with colored rendering in dashboard.
+- **Rationale**: First step toward better documentation annotation. Pure markdown, works everywhere, enables color-coded callouts for transition notes, architectural decisions, etc.
+- **Potential scope**:
+  - Add remark plugin to parse alert syntax
+  - Style callout blocks with appropriate colors in dashboard
+  - Use for transition notes, "established pattern" markers, review comments
+- **Effort**: Low
+- **Added**: 2025-12-30
+
+### 15. Comment Overlay on Rendered Preview (Annotations Phase 2)
+- **Description**: Add annotation layer on rendered markdown preview allowing users to select text and add comments.
+- **Rationale**: Reviewing raw markdown is clunky. Users should be able to annotate the rendered view directly, with comments stored as metadata.
+- **Potential scope**:
+  - Selection-based commenting on rendered markdown
+  - Comments stored separately (e.g., requirements.comments.json)
+  - Visual markers on rendered view showing where comments exist
+  - Comments sync without modifying source markdown
+- **Depends on**: Item #14 (Callout Blocks)
+- **Effort**: Medium-High
+- **Added**: 2025-12-30
+
+### 16. Rich Markdown Editor (Annotations Phase 3)
+- **Description**: Replace raw markdown editing with WYSIWYG editor (Milkdown, TipTap, or similar) with inline commenting.
+- **Rationale**: Full visual editing experience with markdown output. Inline comments built into editor, not separate overlay.
+- **Potential scope**:
+  - Evaluate and integrate rich markdown editor library
+  - Maintain markdown as source of truth
+  - Inline commenting and suggestion mode
+  - Track changes visualization
+- **Depends on**: Items #14 and #15
+- **Effort**: High
+- **Added**: 2025-12-30
 
