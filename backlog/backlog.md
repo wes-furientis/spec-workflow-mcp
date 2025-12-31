@@ -2,6 +2,16 @@
 
 Items to consider for future specs. These are captured here to avoid scope creep in active specs.
 
+## DTG Convention
+
+All backlog items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
+
+- **Added**: When item was first created
+- **Modified**: When item was substantially changed (optional, add when updating)
+- **Completed**: When item was finished (in completed/completed.md only)
+
+Historical items before 2025-12-31 have date-only timestamps.
+
 ## Items
 
 ### 1. Backlog Feature for Spec Workflow MCP
