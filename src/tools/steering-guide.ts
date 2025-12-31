@@ -22,8 +22,34 @@ Before creating ANY steering document, you MUST call the \`suggest-plan-mode\` t
 export async function steeringGuideHandler(args: any, context: ToolContext): Promise<ToolResponse> {
   // Get archetype definition if available
   let archetypeDefinition: ArchetypeDefinition | undefined;
+  let archetypeWarning: string | undefined;
+
   if (context.projectArchetype) {
     archetypeDefinition = await archetypeRegistry.get(context.projectArchetype);
+  } else {
+    // No archetype set - warn the user
+    archetypeWarning = `⚠️ NO ARCHETYPE SET
+
+This project does not have an archetype configured. Without an archetype, steering-guide cannot determine:
+- Which steering documents are required vs optional
+- Which documents require planning mode before creation
+- Archetype-specific templates and guidance
+
+REQUIRED ACTION: Set an archetype before creating steering documents.
+
+How to set archetype:
+1. Open the dashboard: ${context.dashboardUrl || 'spec-workflow-mcp --dashboard'}
+2. Select this project
+3. Go to Settings
+4. Choose an archetype from the dropdown:
+   - greenfield: New projects - includes architecture.md, conventions.md, documentation.md
+   - brownfield: Existing codebases - includes legacy.md, migration.md
+   - web-app: User-facing web applications - includes ux.md, api.md, deployment.md
+   - code-library: Libraries and packages - includes api.md, compatibility.md
+   - research-paper: Academic/research documents - includes thesis.md, evidence.md
+   - generic: Default (minimal customization)
+
+Once set, call steering-guide again to get archetype-specific guidance.`;
   }
 
   // Generate the guide with archetype customization
@@ -32,14 +58,22 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
   // Build next steps based on archetype steering configuration
   const nextSteps = buildNextSteps(archetypeDefinition, context.dashboardUrl);
 
+  // If no archetype, prepend warning to next steps
+  if (archetypeWarning) {
+    nextSteps.unshift('⚠️ REQUIRED: Set archetype in dashboard before creating steering docs');
+  }
+
   return {
-    success: true,
-    message: archetypeDefinition
-      ? `Steering workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly to avoid errors`
-      : 'Steering workflow guide loaded - follow this workflow exactly to avoid errors',
+    success: !archetypeWarning, // Not fully successful without archetype
+    message: archetypeWarning
+      ? '⚠️ WARNING: No archetype configured - set one before creating steering documents'
+      : archetypeDefinition
+        ? `Steering workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly to avoid errors`
+        : 'Steering workflow guide loaded - follow this workflow exactly to avoid errors',
     data: {
       guide: guide,
       dashboardUrl: context.dashboardUrl,
+      archetypeWarning: archetypeWarning,
       archetype: archetypeDefinition ? {
         name: archetypeDefinition.name,
         displayName: archetypeDefinition.displayName,
@@ -89,12 +123,26 @@ function buildNextSteps(archetype: ArchetypeDefinition | undefined, dashboardUrl
 }
 
 function getSteeringGuide(archetype?: ArchetypeDefinition): string {
-  // If archetype has no standard steering docs, provide archetype-specific guide
-  if (archetype && !hasStandardSteeringDocs(archetype)) {
+  if (!archetype) {
+    // No archetype - return default guide with warning
+    return getDefaultSteeringGuide();
+  }
+
+  // Check what steering docs this archetype has
+  const hasStandard = hasStandardSteeringDocs(archetype);
+  const hasCustom = archetype.steering.custom.length > 0;
+
+  if (!hasStandard && hasCustom) {
+    // Only custom docs (no standard) - use archetype-specific guide
     return getArchetypeSpecificSteeringGuide(archetype);
   }
 
-  // Default/generic behavior - full steering guide with all standard docs
+  if (hasStandard && hasCustom) {
+    // BOTH standard and custom docs - generate combined guide
+    return getCombinedSteeringGuide(archetype);
+  }
+
+  // Only standard docs (or no custom) - use default guide
   return getDefaultSteeringGuide();
 }
 
@@ -105,6 +153,176 @@ function hasStandardSteeringDocs(archetype: ArchetypeDefinition): boolean {
   const standardDocs = ['product', 'tech', 'structure'];
   const allDocs = [...archetype.steering.required, ...archetype.steering.optional];
   return standardDocs.some(doc => allDocs.includes(doc));
+}
+
+/**
+ * Generate steering guide for archetypes with BOTH standard and custom docs (e.g., greenfield)
+ */
+function getCombinedSteeringGuide(archetype: ArchetypeDefinition): string {
+  const customDocs = archetype.steering.custom;
+
+  // Identify which docs require planning
+  const docsRequiringPlanning = customDocs.filter(d => d.requiresPlanning);
+  const planningSection = docsRequiringPlanning.length > 0
+    ? `
+## CRITICAL: Planning Check Before Creating Documents
+
+Some steering documents in this archetype require planning mode. Before creating these documents, you MUST call \`suggest-plan-mode\` first:
+
+**Documents requiring planning check:**
+${docsRequiringPlanning.map(d => `- **${d.name}.md** (context: ${d.planningContext && d.planningContext.length > 0 ? d.planningContext.map(c => `${c}.md`).join(', ') : 'none'})`).join('\n')}
+
+**Process:**
+1. Call \`suggest-plan-mode\` with taskDescription: "Create <document-name>.md steering document"
+2. If recommendation is "required" or "recommended": Use \`EnterPlanMode\` first
+3. Use \`get-planning-context\` to retrieve context documents for planning
+4. Complete planning phase before creating the document
+
+**Why this matters:** These documents define foundational project decisions that benefit from structured planning and exploration.
+`
+    : '';
+
+  // Build all steering docs list
+  const allRequiredDocs = archetype.steering.required.map(d => `- **${d}.md**: ${getSteeringDocPurpose(d)}`);
+  const allOptionalDocs = archetype.steering.optional.map(d => `- **${d}.md**: ${getSteeringDocPurpose(d)} *(optional)*`);
+  const allCustomDocs = customDocs.map(doc => `- **${doc.name}.md**: ${doc.description}${doc.requiresPlanning ? ' ⚠️ *Planning required*' : ''}`);
+
+  // Generate phases for custom docs (standard docs use default phases)
+  const customPhases = customDocs.map((doc, index) =>
+    generateCustomDocPhase(doc, index + 4, customDocs.length + 3) // Phase 4+ after product/tech/structure
+  );
+
+  // Generate file structure
+  const standardFiles = ['product.md', 'tech.md', 'structure.md'];
+  const customFiles = customDocs.map(d => `${d.name}.md`);
+  const allFiles = [...standardFiles, ...customFiles];
+
+  return `# Steering Workflow - ${archetype.displayName}
+
+## Overview
+
+Create project-level guidance documents for ${archetype.displayName} projects. ${archetype.description}
+
+**Documentation Focus**: ${archetype.guidance.documentationFocus}
+
+Its important that you follow this workflow exactly to avoid errors.
+${planningSection}
+## Complete Steering Documents for ${archetype.displayName}
+
+This archetype requires the following steering documents:
+
+### Required (Standard)
+${allRequiredDocs.join('\n')}
+
+### Required (${archetype.displayName}-specific)
+${allCustomDocs.join('\n')}
+${allOptionalDocs.length > 0 ? `
+### Optional
+${allOptionalDocs.join('\n')}
+` : ''}
+## Steering Workflow Phases
+
+### Phase 1: Product Document
+**Purpose**: Define vision, goals, and user outcomes.
+
+**File Operations**:
+- Check for custom template: \`.spec-workflow/user-templates/product-template.md\`
+- Read template: \`.spec-workflow/templates/product-template.md\` (if no custom template)
+- Create document: \`.spec-workflow/steering/product.md\`
+
+**Tools**:
+- steering-guide: Load workflow instructions
+- approvals: Manage approval workflow (actions: request, status, delete)
+
+**Process**:
+1. Check for custom template at \`.spec-workflow/user-templates/product-template.md\`
+2. If no custom template, read from \`.spec-workflow/templates/product-template.md\`
+3. Generate product vision and goals
+4. Create \`product.md\` at \`.spec-workflow/steering/product.md\`
+5. Request approval using approvals tool with action:'request' (filePath only)
+6. Poll status using approvals with action:'status' until approved/needs-revision
+7. If needs-revision: update document using comments, create NEW approval, do NOT proceed
+8. Once approved: use approvals with action:'delete' (must succeed) before proceeding
+9. If delete fails: STOP - return to polling
+
+### Phase 2: Tech Document
+**Purpose**: Document technology decisions and architecture.
+
+**File Operations**:
+- Check for custom template: \`.spec-workflow/user-templates/tech-template.md\`
+- Read template: \`.spec-workflow/templates/tech-template.md\` (if no custom template)
+- Create document: \`.spec-workflow/steering/tech.md\`
+
+**Process**:
+1. Check for custom template at \`.spec-workflow/user-templates/tech-template.md\`
+2. If no custom template, read from \`.spec-workflow/templates/tech-template.md\`
+3. Analyze existing technology stack
+4. Document architectural decisions and patterns
+5. Create \`tech.md\` at \`.spec-workflow/steering/tech.md\`
+6. Request approval using approvals tool with action:'request'
+7. Poll status until approved/needs-revision
+8. If needs-revision: update document, create NEW approval, do NOT proceed
+9. Once approved: use approvals with action:'delete' before proceeding
+
+### Phase 3: Structure Document
+**Purpose**: Map codebase organization and patterns.
+
+**File Operations**:
+- Check for custom template: \`.spec-workflow/user-templates/structure-template.md\`
+- Read template: \`.spec-workflow/templates/structure-template.md\` (if no custom template)
+- Create document: \`.spec-workflow/steering/structure.md\`
+
+**Process**:
+1. Check for custom template at \`.spec-workflow/user-templates/structure-template.md\`
+2. If no custom template, read from \`.spec-workflow/templates/structure-template.md\`
+3. Analyze directory structure and file organization
+4. Document coding patterns and conventions
+5. Create \`structure.md\` at \`.spec-workflow/steering/structure.md\`
+6. Request approval using approvals tool with action:'request'
+7. Poll status until approved/needs-revision
+8. If needs-revision: update document, create NEW approval, do NOT proceed
+9. Once approved: use approvals with action:'delete' before proceeding
+
+${customPhases.join('\n\n')}
+
+## Workflow Rules
+
+- Create documents directly at specified file paths
+- Check for custom templates in \`.spec-workflow/user-templates/\` first
+- Read templates from \`.spec-workflow/templates/\` directory if no custom template exists
+- Follow exact template structures
+- Get explicit user approval between phases (using approvals tool with action:'request')
+- Complete phases in sequence (no skipping)
+- Approval requests: provide filePath only, never content
+- BLOCKING: Never proceed if approval delete fails
+- CRITICAL: Must have approved status AND successful cleanup before next phase
+- CRITICAL: Verbal approval is NEVER accepted - dashboard or VS Code extension only
+- NEVER proceed on user saying "approved" - check system status only
+
+## File Structure
+\`\`\`
+.spec-workflow/
+├── templates/           # Auto-populated on server start
+${allFiles.map(f => `│   └── ${f.replace('.md', '-template.md')}`).join('\n')}
+└── steering/
+${allFiles.map(f => `    └── ${f}`).join('\n')}
+\`\`\``;
+}
+
+/**
+ * Get purpose description for standard steering docs
+ */
+function getSteeringDocPurpose(docName: string): string {
+  switch (docName) {
+    case 'product':
+      return 'Product vision, target users, key features, success metrics';
+    case 'tech':
+      return 'Technology stack, dependencies, architectural decisions';
+    case 'structure':
+      return 'Directory organization, file naming, module boundaries';
+    default:
+      return 'Project documentation';
+  }
 }
 
 /**

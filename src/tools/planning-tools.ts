@@ -533,10 +533,6 @@ function checkSteeringDocPlanning(
   taskDescription: string,
   archetype?: ArchetypeDefinition
 ): ToolResponse | null {
-  if (!archetype) return null;
-
-  const taskLower = taskDescription.toLowerCase();
-
   // Check if task mentions creating/writing steering docs
   const steeringDocPatterns = [
     /creat(e|ing)\s+(\w+\.md|steering|documentation)/i,
@@ -547,6 +543,42 @@ function checkSteeringDocPlanning(
 
   const isSteeringDocTask = steeringDocPatterns.some(p => p.test(taskDescription));
   if (!isSteeringDocTask) return null;
+
+  // If no archetype, still recommend planning for steering docs but warn about missing archetype
+  if (!archetype) {
+    return {
+      success: true,
+      message: '⚠️ Planning mode RECOMMENDED for steering docs (archetype not set)',
+      data: {
+        recommendation: 'recommended' as const,
+        confidence: 'medium' as const,
+        complexityScore: 5,
+        complexityFactors: [
+          'Creating steering document',
+          '⚠️ No archetype configured - cannot determine specific requirements',
+          'Steering docs are foundational - planning recommended by default'
+        ],
+        archetypeRecommendation: 'recommended',
+        archetype: 'unknown',
+        archetypeWarning: 'No archetype is configured for this project. Set an archetype in the dashboard to get archetype-specific planning requirements and steering document guidance.',
+        contextFilesToRead: [
+          '.spec-workflow/steering/product.md',
+          '.spec-workflow/steering/tech.md',
+          '.spec-workflow/steering/structure.md'
+        ],
+        reasoning: 'Creating steering documents is a foundational task that benefits from planning. ' +
+          'However, no archetype is configured, so specific requirements cannot be determined. ' +
+          'Set an archetype in the dashboard before proceeding to get proper guidance on which ' +
+          'steering docs are required (e.g., greenfield requires architecture.md, conventions.md, documentation.md).'
+      },
+      nextSteps: [
+        '⚠️ FIRST: Set archetype in dashboard to get proper steering doc requirements',
+        'Then call steering-guide to get archetype-specific workflow',
+        'Consider using EnterPlanMode for complex documents',
+        'Read existing steering docs for context'
+      ]
+    };
+  }
 
   // Check each custom steering doc for requiresPlanning
   for (const customDoc of archetype.steering.custom) {
