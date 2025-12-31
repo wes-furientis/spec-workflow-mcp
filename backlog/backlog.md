@@ -237,7 +237,34 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Low
 - **Added**: 2025-12-30
 
-### 20. Resume Workflow Tool with State Tracking
+### 20. Reduce Context Usage in MCP Tool Responses
+- **Description**: Audit and slim down all tool responses to minimize context consumption
+- **Rationale**: MCP tool responses add to conversation context. Verbose responses eat up the context window, leaving less room for actual work. Agent can always call Read tool if it needs full content.
+- **Strategies**:
+  1. **Return paths, not content** - Give file path + line count, let agent Read if needed
+  2. **Minimal status responses** - Just status + next action, not full descriptions
+  3. **Don't repeat instructions** - First call gets guidance, subsequent calls just data
+  4. **Summarize, don't dump** - "10 sections: Overview, Naming, ..." not full template
+  5. **Lazy loading** - Only include content when explicitly requested
+  6. **Line number hints** - "See product.md:45-60 for target users" instead of including text
+- **Tools to audit**:
+  - `steering-guide` - Currently returns descriptions for all docs
+  - `get-steering-template` - Returns full template content + context snippets
+  - `steering-planning-respond` - Returns next section content
+  - `spec-workflow-guide` - Returns verbose guidance text
+  - `spec-status` - May include too much detail
+  - `get-planning-context` - Loads and returns context docs inline
+- **Pattern to adopt**:
+  ```
+  Bad:  { content: "# Full document here\n..." }
+  Good: { path: ".spec-workflow/steering/product.md", lines: 150, summary: "Product vision doc" }
+  ```
+  Agent calls: Read(.spec-workflow/steering/product.md) only if needed
+- **Effort**: Medium
+- **Priority**: High (impacts every tool call)
+- **Added**: 2025-12-30
+
+### 21. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
