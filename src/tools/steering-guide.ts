@@ -162,32 +162,39 @@ export async function steeringGuideHandler(args: any, context: ToolContext): Pro
     ));
   }
 
-  // Determine what to do next
-  const pendingApproval = docs.find(d => d.status === 'pending-approval');
-  const needsRevision = docs.find(d => d.status === 'needs-revision');
-  const draft = docs.find(d => d.status === 'draft');
-  const notCreated = docs.find(d => d.status === 'not-created');
+  // Determine what to do next - respects document order
+  // Find first doc that isn't approved (docs are already in correct order: required → optional → custom)
+  const nextDoc = docs.find(d => d.status !== 'approved');
 
   let nextAction: string;
   let blocked = false;
 
-  if (pendingApproval) {
-    nextAction = `BLOCKED: "${pendingApproval.name}.md" awaiting approval. Check dashboard or call: approvals action:"status" approvalId:"${pendingApproval.approvalId}"`;
-    blocked = true;
-  } else if (needsRevision) {
-    nextAction = `BLOCKED: "${needsRevision.name}.md" needs revision. Update doc, then create new approval.`;
-    blocked = true;
-  } else if (draft) {
-    nextAction = `"${draft.name}.md" exists but not approved. Submit for approval: approvals action:"request"`;
-    blocked = true;
-  } else if (notCreated) {
-    if (notCreated.requiresPlanning) {
-      nextAction = `Create "${notCreated.name}.md" - PLANNING REQUIRED. Call: suggest-plan-mode taskDescription:"Create ${notCreated.name}.md"`;
-    } else {
-      nextAction = `Create "${notCreated.name}.md". Call: get-steering-template docName:"${notCreated.name}"`;
-    }
-  } else {
+  if (!nextDoc) {
     nextAction = 'All steering docs complete!';
+  } else {
+    switch (nextDoc.status) {
+      case 'pending-approval':
+        nextAction = `BLOCKED: "${nextDoc.name}.md" awaiting approval. Check dashboard or call: approvals action:"status" approvalId:"${nextDoc.approvalId}"`;
+        blocked = true;
+        break;
+      case 'needs-revision':
+        nextAction = `BLOCKED: "${nextDoc.name}.md" needs revision. Update doc, then create new approval.`;
+        blocked = true;
+        break;
+      case 'draft':
+        nextAction = `"${nextDoc.name}.md" exists but not approved. Submit for approval: approvals action:"request"`;
+        blocked = true;
+        break;
+      case 'not-created':
+        if (nextDoc.requiresPlanning) {
+          nextAction = `Create "${nextDoc.name}.md" - PLANNING REQUIRED. Call: suggest-plan-mode taskDescription:"Create ${nextDoc.name}.md"`;
+        } else {
+          nextAction = `Create "${nextDoc.name}.md". Call: get-steering-template docName:"${nextDoc.name}"`;
+        }
+        break;
+      default:
+        nextAction = `Unknown status for "${nextDoc.name}.md"`;
+    }
   }
 
   return {
