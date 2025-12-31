@@ -264,7 +264,21 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Priority**: High (impacts every tool call)
 - **Added**: 2025-12-30
 
-### 21. Resume Workflow Tool with State Tracking
+### 21. Validate Documentation Template Against Real Sphinx Project
+- **Description**: Scrub the documentation.md template against the Sphinx documentation in ~/furientis/dev/algorithms/seeker_algo
+- **Rationale**: The documentation template should reflect real-world documentation practices. Comparing against an actual Sphinx project will identify gaps, unrealistic sections, and missing patterns.
+- **Scope**:
+  - Review seeker_algo's Sphinx setup (conf.py, structure, build process)
+  - Compare template sections against what's actually used
+  - Remove template sections that don't match real practice
+  - Add missing patterns discovered in real project
+  - Ensure template guidance aligns with Sphinx conventions
+- **File**: `src/markdown/templates/documentation.md`
+- **Reference**: `~/furientis/dev/algorithms/seeker_algo`
+- **Effort**: Low-Medium
+- **Added**: 2025-12-30
+
+### 22. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
