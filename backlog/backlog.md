@@ -209,7 +209,18 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Medium
 - **Added**: 2025-12-30
 
-### 18. Resume Workflow Tool with State Tracking
+### 18. Speed Up Section-by-Section Planning
+- **Description**: Reduce response payload and skip unnecessary processing in steering template planning flow
+- **Rationale**: Agent takes a long time to think between each section question. Large response payloads and context lookups add latency and cognitive load.
+- **Quick wins**:
+  - Don't return full `templateContent` - just section name and one-line summary
+  - Skip `relevantFromApprovedDocs` context lookups - user knows their own docs
+  - Minimize response data - less data = less agent thinking time
+- **Files**: `src/tools/get-steering-template.ts`, `src/tools/steering-planning-respond.ts`
+- **Effort**: Low
+- **Added**: 2025-12-30
+
+### 19. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
