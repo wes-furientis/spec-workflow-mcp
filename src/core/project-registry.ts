@@ -312,6 +312,17 @@ export class ProjectRegistry {
   }
 
   /**
+   * Get the archetype for a project by its path
+   * @param projectPath - Absolute or relative path to the project
+   * @returns The archetype name, or null if not set
+   */
+  async getArchetypeByPath(projectPath: string): Promise<string | null> {
+    const absolutePath = resolve(projectPath);
+    const projectId = generateProjectId(absolutePath);
+    return this.getArchetype(projectId);
+  }
+
+  /**
    * Set the archetype for a project by projectId
    * @param projectId - The project ID
    * @param archetype - The archetype name to set

@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { join, basename, resolve } from 'path';
 import chokidar from 'chokidar';
+import { ProjectRegistry } from './project-registry.js';
 
 /**
  * Represents a discovered project with a .spec-workflow directory
@@ -354,11 +355,12 @@ export function watchForNewProjects(
 }
 
 /**
- * Get the archetype for a project from its config file
+ * Get the archetype for a project from its config file or registry
  * @param projectPath - Absolute path to the project root
  * @returns The archetype name if configured, undefined otherwise
  */
 export async function getProjectArchetype(projectPath: string): Promise<string | undefined> {
+  // First, check local project config files
   const specWorkflowPath = join(projectPath, '.spec-workflow');
   const configFiles = ['project.yaml', 'project.yml', 'project.json'];
 
@@ -373,6 +375,17 @@ export async function getProjectArchetype(projectPath: string): Promise<string |
     } catch {
       // Config file doesn't exist, continue checking
     }
+  }
+
+  // Fallback: Check the global registry (where dashboard saves archetype)
+  try {
+    const registry = new ProjectRegistry();
+    const archetype = await registry.getArchetypeByPath(projectPath);
+    if (archetype) {
+      return archetype;
+    }
+  } catch {
+    // Registry not available or error reading, continue with undefined
   }
 
   return undefined;
