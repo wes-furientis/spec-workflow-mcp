@@ -24,8 +24,34 @@ export async function specWorkflowGuideHandler(args: any, context: ToolContext):
 
   // Get archetype definition if available
   let archetypeDefinition: ArchetypeDefinition | undefined;
+  let archetypeWarning: string | undefined;
+
   if (context.projectArchetype) {
     archetypeDefinition = await archetypeRegistry.get(context.projectArchetype);
+  } else {
+    // No archetype set - warn the user
+    archetypeWarning = `⚠️ NO ARCHETYPE SET
+
+This project does not have an archetype configured. Archetypes provide:
+- Tailored steering document templates (architecture.md, conventions.md, etc.)
+- Project-type-specific guidance
+- Planning mode recommendations
+
+REQUIRED ACTION: Set an archetype before proceeding.
+
+How to set archetype:
+1. Open the dashboard: ${context.dashboardUrl || 'spec-workflow-mcp --dashboard'}
+2. Select this project
+3. Go to Settings
+4. Choose an archetype from the dropdown:
+   - greenfield: New projects (recommended for most new work)
+   - brownfield: Existing codebases
+   - web-app: User-facing web applications
+   - code-library: Libraries and packages
+   - research-paper: Academic/research documents
+   - generic: Default (minimal customization)
+
+Once set, call spec-workflow-guide again to get archetype-specific guidance.`;
   }
 
   // Generate the guide with archetype customization
@@ -45,15 +71,23 @@ export async function specWorkflowGuideHandler(args: any, context: ToolContext):
     nextSteps.unshift(`Key focus for ${archetypeDefinition.displayName}: ${archetypeDefinition.guidance.workflowEmphasis[0]}`);
   }
 
+  // If no archetype, prepend warning to next steps and change message
+  if (archetypeWarning) {
+    nextSteps.unshift('⚠️ REQUIRED: Set archetype in dashboard before proceeding');
+  }
+
   return {
-    success: true,
-    message: archetypeDefinition
-      ? `Complete spec workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly`
-      : 'Complete spec workflow guide loaded - follow this workflow exactly',
+    success: !archetypeWarning, // Not fully successful without archetype
+    message: archetypeWarning
+      ? '⚠️ WARNING: No archetype configured - set one before proceeding'
+      : archetypeDefinition
+        ? `Complete spec workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly`
+        : 'Complete spec workflow guide loaded - follow this workflow exactly',
     data: {
       guide: guide,
       dashboardUrl: context.dashboardUrl,
       dashboardAvailable: !!context.dashboardUrl,
+      archetypeWarning: archetypeWarning,
       archetype: archetypeDefinition ? {
         name: archetypeDefinition.name,
         displayName: archetypeDefinition.displayName,
