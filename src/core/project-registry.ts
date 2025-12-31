@@ -206,14 +206,22 @@ export class ProjectRegistry {
     if (pid !== undefined) {
       // Remove only this PID's instance
       entry.instances = entry.instances.filter(i => i.pid !== pid);
-      if (entry.instances.length === 0) {
+      // Always preserve the entry (keeps archetype, etc.) - just clear instances
+      // Only delete if there's no archetype set AND no instances
+      if (entry.instances.length === 0 && !entry.archetype) {
         registry.delete(projectId);
       } else {
         registry.set(projectId, entry);
       }
     } else {
-      // Remove entire project (backwards compat)
-      registry.delete(projectId);
+      // Remove entire project - only if no archetype set (backwards compat)
+      if (!entry.archetype) {
+        registry.delete(projectId);
+      } else {
+        // Has archetype - preserve entry but clear instances
+        entry.instances = [];
+        registry.set(projectId, entry);
+      }
     }
 
     await this.writeRegistry(registry);
