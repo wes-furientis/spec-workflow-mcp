@@ -196,6 +196,7 @@ async function readContextDocs(projectPath: string, docNames: string[]): Promise
 
 /**
  * Format a section for presentation to user
+ * NOTE: Returns summaries instead of full content to reduce context usage
  */
 function formatSectionForUser(
   section: TemplateSection,
@@ -204,19 +205,19 @@ function formatSectionForUser(
   contextDocs: Record<string, string>
 ): { sectionInfo: any; questions: string[] } {
 
-  // Check if any context docs mention this section topic
-  const relevantContext: Record<string, string> = {};
+  // Check if any context docs mention this section topic - return paths, not content
+  const relevantContextHints: Record<string, string> = {};
   const sectionKeywords = section.name.toLowerCase().split(' ');
 
   for (const [docName, content] of Object.entries(contextDocs)) {
     const lowerContent = content.toLowerCase();
-    if (sectionKeywords.some(kw => kw.length > 3 && lowerContent.includes(kw))) {
-      // Extract relevant snippet (first 500 chars mentioning the keyword)
-      const matchIdx = lowerContent.indexOf(sectionKeywords.find(kw => kw.length > 3 && lowerContent.includes(kw)) || '');
-      if (matchIdx !== -1) {
-        const start = Math.max(0, matchIdx - 100);
-        const end = Math.min(content.length, matchIdx + 400);
-        relevantContext[docName] = content.slice(start, end) + '...';
+    const matchingKeyword = sectionKeywords.find(kw => kw.length > 3 && lowerContent.includes(kw));
+    if (matchingKeyword) {
+      // Just note the file and line number hint, don't include content
+      const lines = content.split('\n');
+      const lineIdx = lines.findIndex(line => line.toLowerCase().includes(matchingKeyword));
+      if (lineIdx >= 0) {
+        relevantContextHints[docName] = `See .spec-workflow/steering/${docName}.md:${lineIdx + 1} (mentions "${matchingKeyword}")`;
       }
     }
   }
@@ -231,14 +232,21 @@ function formatSectionForUser(
     questions.push(`Template suggests: ${section.placeholders.slice(0, 3).join(', ')}${section.placeholders.length > 3 ? '...' : ''}`);
   }
 
+  // Return summary instead of full template content
+  const contentLines = section.content.split('\n').filter(l => l.trim());
+  const contentSummary = contentLines.length > 0
+    ? `${contentLines.length} lines. First: "${contentLines[0].substring(0, 60)}${contentLines[0].length > 60 ? '...' : ''}"`
+    : 'Empty section';
+
   return {
     sectionInfo: {
       sectionNumber: currentIndex + 1,
       totalSections,
       sectionName: section.name,
-      templateContent: section.content,
-      placeholders: section.placeholders,
-      relevantFromApprovedDocs: Object.keys(relevantContext).length > 0 ? relevantContext : undefined
+      // Return summary instead of full content - agent can Read template file if needed
+      templateSummary: contentSummary,
+      placeholders: section.placeholders.slice(0, 5), // Limit placeholders
+      relevantDocsHints: Object.keys(relevantContextHints).length > 0 ? relevantContextHints : undefined
     },
     questions
   };

@@ -31,3 +31,19 @@ All completed items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
   - Added `useEffect` in `ApprovalsPage.tsx` to load `a.comments` into local state
   - Extended `Approval` type in `api.tsx` with `comments`, `response`, `annotations` fields
   - Added 8 unit tests verifying comment persistence and retrieval
+
+### #25 - Resume Workflow Tool with State Tracking
+- **Added**: 2025-12-30
+- **Completed**: 2025-12-31T14:36:00Z
+- **Description**: Add workflow state tracking and resume-workflow tool
+- **Implementation**:
+  - New `src/core/workflow-state.ts`: State management with WorkflowState interface
+    - Tracks steering docs, spec phases, approvals, current focus
+    - Helper functions: isSpecReadyForImplementation, getImplementationBlockers
+  - New `src/tools/resume-workflow.ts`: MCP tool for resuming workflows
+    - action: "status" - show current state and next actions
+    - action: "validate-for-implementation" - blocks if specs not fully approved
+  - State updates hooked into approvals tool (status check updates state)
+  - 14 unit tests for workflow state management
+- **State file**: `.spec-workflow/state.json`
+- **Remaining**: Dashboard view showing workflow state (nice-to-have)
