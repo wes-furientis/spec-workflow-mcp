@@ -2,6 +2,31 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ToolContext, ToolResponse } from '../types.js';
 import archetypeRegistry from '../archetypes/archetype-registry.js';
 import { ArchetypeDefinition } from '../archetypes/types.js';
+import { ApprovalStorage, ApprovalRequest } from '../dashboard/approval-storage.js';
+import { PathUtils } from '../core/path-utils.js';
+
+/**
+ * Check for pending steering approvals that need to be resolved
+ */
+async function getPendingSteeringApprovals(projectPath: string): Promise<ApprovalRequest[]> {
+  try {
+    const translatedPath = PathUtils.translatePath(projectPath);
+    const approvalStorage = new ApprovalStorage(translatedPath, projectPath);
+    await approvalStorage.start();
+
+    const allApprovals = await approvalStorage.getAllApprovals();
+    await approvalStorage.stop();
+
+    // Filter for pending steering approvals
+    return allApprovals.filter(a =>
+      a.category === 'steering' &&
+      (a.status === 'pending' || a.status === 'needs-revision')
+    );
+  } catch {
+    // If approval storage fails, just return empty - don't block
+    return [];
+  }
+}
 
 export const steeringGuideTool: Tool = {
   name: 'steering-guide',
@@ -20,6 +45,36 @@ Before creating ANY steering document, you MUST call the \`suggest-plan-mode\` t
 };
 
 export async function steeringGuideHandler(args: any, context: ToolContext): Promise<ToolResponse> {
+  // Check for pending steering approvals first
+  let pendingApprovals: ApprovalRequest[] = [];
+  let pendingApprovalsWarning: string | undefined;
+
+  if (context.projectPath) {
+    pendingApprovals = await getPendingSteeringApprovals(context.projectPath);
+    if (pendingApprovals.length > 0) {
+      const pendingList = pendingApprovals.map(a =>
+        `- **${a.title}** (${a.filePath}) - Status: ${a.status}${a.status === 'needs-revision' ? ' - UPDATE REQUIRED' : ''}`
+      ).join('\n');
+
+      pendingApprovalsWarning = `⚠️ PENDING APPROVALS DETECTED
+
+You have ${pendingApprovals.length} steering document(s) awaiting approval or revision:
+
+${pendingList}
+
+**REQUIRED ACTION**: Complete these approval workflows before creating new steering documents.
+
+For pending approvals:
+- Check status: approvals action:"status" approvalId:"<id>"
+- Wait for approval in dashboard, then delete: approvals action:"delete"
+
+For needs-revision:
+- Update the document based on feedback
+- Create a NEW approval request
+- Wait for approval`;
+    }
+  }
+
   // Get archetype definition if available
   let archetypeDefinition: ArchetypeDefinition | undefined;
   let archetypeWarning: string | undefined;
@@ -58,22 +113,41 @@ Once set, call steering-guide again to get archetype-specific guidance.`;
   // Build next steps based on archetype steering configuration
   const nextSteps = buildNextSteps(archetypeDefinition, context.dashboardUrl);
 
-  // If no archetype, prepend warning to next steps
+  // Prepend warnings to next steps (pending approvals first, then archetype)
+  if (pendingApprovalsWarning) {
+    nextSteps.unshift(`⚠️ BLOCKED: ${pendingApprovals.length} pending steering approval(s) - resolve before continuing`);
+  }
   if (archetypeWarning) {
     nextSteps.unshift('⚠️ REQUIRED: Set archetype in dashboard before creating steering docs');
   }
 
+  // Determine success and message based on warnings
+  const hasBlockingIssue = !!archetypeWarning || !!pendingApprovalsWarning;
+  let message: string;
+  if (pendingApprovalsWarning) {
+    message = `⚠️ BLOCKED: ${pendingApprovals.length} pending steering approval(s) must be resolved first`;
+  } else if (archetypeWarning) {
+    message = '⚠️ WARNING: No archetype configured - set one before creating steering documents';
+  } else if (archetypeDefinition) {
+    message = `Steering workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly to avoid errors`;
+  } else {
+    message = 'Steering workflow guide loaded - follow this workflow exactly to avoid errors';
+  }
+
   return {
-    success: !archetypeWarning, // Not fully successful without archetype
-    message: archetypeWarning
-      ? '⚠️ WARNING: No archetype configured - set one before creating steering documents'
-      : archetypeDefinition
-        ? `Steering workflow guide loaded for ${archetypeDefinition.displayName} - follow this workflow exactly to avoid errors`
-        : 'Steering workflow guide loaded - follow this workflow exactly to avoid errors',
+    success: !hasBlockingIssue,
+    message: message,
     data: {
       guide: guide,
       dashboardUrl: context.dashboardUrl,
       archetypeWarning: archetypeWarning,
+      pendingApprovalsWarning: pendingApprovalsWarning,
+      pendingApprovals: pendingApprovals.length > 0 ? pendingApprovals.map(a => ({
+        id: a.id,
+        title: a.title,
+        filePath: a.filePath,
+        status: a.status
+      })) : undefined,
       archetype: archetypeDefinition ? {
         name: archetypeDefinition.name,
         displayName: archetypeDefinition.displayName,

@@ -9,8 +9,44 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { ToolContext, ToolResponse } from '../types.js';
 import archetypeRegistry from '../archetypes/archetype-registry.js';
 import { ArchetypeDefinition } from '../archetypes/types.js';
+import { ApprovalStorage, ApprovalRequest } from '../dashboard/approval-storage.js';
+import { PathUtils } from '../core/path-utils.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+/**
+ * Get all steering approvals (any status) for a project
+ */
+async function getSteeringApprovals(projectPath: string): Promise<ApprovalRequest[]> {
+  try {
+    const translatedPath = PathUtils.translatePath(projectPath);
+    const approvalStorage = new ApprovalStorage(translatedPath, projectPath);
+    await approvalStorage.start();
+    const allApprovals = await approvalStorage.getAllApprovals();
+    await approvalStorage.stop();
+    return allApprovals.filter(a => a.category === 'steering');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get the approval status for a steering document
+ * Returns 'approved', 'pending', 'needs-revision', 'rejected', or 'none' (no approval ever created)
+ */
+function getApprovalStatusForFile(
+  filePath: string,
+  approvals: ApprovalRequest[]
+): 'approved' | 'pending' | 'needs-revision' | 'rejected' | 'none' {
+  // Find the most recent approval for this file path
+  const fileApprovals = approvals.filter(a => a.filePath === filePath);
+  if (fileApprovals.length === 0) {
+    return 'none';
+  }
+  // Sort by createdAt descending to get most recent
+  fileApprovals.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return fileApprovals[0].status;
+}
 
 // =============================================================================
 // Level 2: Get Planning Context Tool
@@ -46,64 +82,73 @@ export async function getPlanningContextHandler(args: any, context: ToolContext)
     archetypeDefinition = await archetypeRegistry.get(context.projectArchetype);
   }
 
+  // Get all steering approvals to check status
+  const steeringApprovals = await getSteeringApprovals(projectPath);
+
   // Build list of context files to read
   const contextFiles: Array<{
     path: string;
     purpose: string;
     priority: 'required' | 'recommended' | 'optional';
     exists?: boolean;
+    approvalStatus?: 'approved' | 'pending' | 'needs-revision' | 'rejected' | 'none';
+    status?: 'complete' | 'pending-approval' | 'needs-revision' | 'missing' | 'unapproved';
   }> = [];
 
   // Add steering documents based on archetype
   const steeringDir = path.join(projectPath, '.spec-workflow', 'steering');
 
+  // Helper to add a steering doc with full status
+  const addSteeringDoc = async (docName: string, purpose: string, priority: 'required' | 'recommended' | 'optional') => {
+    const filePath = path.join(steeringDir, `${docName}.md`);
+    const relativePath = `.spec-workflow/steering/${docName}.md`;
+    const exists = await fileExists(filePath);
+    const approvalStatus = getApprovalStatusForFile(relativePath, steeringApprovals);
+
+    // Determine overall status
+    let status: 'complete' | 'pending-approval' | 'needs-revision' | 'missing' | 'unapproved';
+    if (!exists) {
+      status = 'missing';
+    } else if (approvalStatus === 'approved') {
+      status = 'complete';
+    } else if (approvalStatus === 'pending') {
+      status = 'pending-approval';
+    } else if (approvalStatus === 'needs-revision') {
+      status = 'needs-revision';
+    } else {
+      // File exists but was never submitted for approval, or approval was deleted/rejected
+      status = 'unapproved';
+    }
+
+    contextFiles.push({
+      path: relativePath,
+      purpose,
+      priority,
+      exists,
+      approvalStatus,
+      status
+    });
+  };
+
   if (archetypeDefinition) {
     // Required steering docs
     for (const doc of archetypeDefinition.steering.required) {
-      const filePath = path.join(steeringDir, `${doc}.md`);
-      const exists = await fileExists(filePath);
-      contextFiles.push({
-        path: `.spec-workflow/steering/${doc}.md`,
-        purpose: getSteeringDocPurpose(doc),
-        priority: 'required',
-        exists
-      });
+      await addSteeringDoc(doc, getSteeringDocPurpose(doc), 'required');
     }
 
     // Optional steering docs
     for (const doc of archetypeDefinition.steering.optional) {
-      const filePath = path.join(steeringDir, `${doc}.md`);
-      const exists = await fileExists(filePath);
-      contextFiles.push({
-        path: `.spec-workflow/steering/${doc}.md`,
-        purpose: getSteeringDocPurpose(doc),
-        priority: 'recommended',
-        exists
-      });
+      await addSteeringDoc(doc, getSteeringDocPurpose(doc), 'recommended');
     }
 
     // Custom steering docs
     for (const custom of archetypeDefinition.steering.custom) {
-      const filePath = path.join(steeringDir, `${custom.name}.md`);
-      const exists = await fileExists(filePath);
-      contextFiles.push({
-        path: `.spec-workflow/steering/${custom.name}.md`,
-        purpose: custom.description,
-        priority: 'recommended',
-        exists
-      });
+      await addSteeringDoc(custom.name, custom.description, 'recommended');
     }
   } else {
     // Default steering docs for generic/unknown archetype
     for (const doc of ['product', 'tech', 'structure']) {
-      const filePath = path.join(steeringDir, `${doc}.md`);
-      const exists = await fileExists(filePath);
-      contextFiles.push({
-        path: `.spec-workflow/steering/${doc}.md`,
-        purpose: getSteeringDocPurpose(doc),
-        priority: 'recommended',
-        exists
-      });
+      await addSteeringDoc(doc, getSteeringDocPurpose(doc), 'recommended');
     }
   }
 
@@ -119,7 +164,8 @@ export async function getPlanningContextHandler(args: any, context: ToolContext)
           path: `.spec-workflow/specs/${specName}/${specDoc}`,
           purpose: `Spec document: ${specDoc.replace('.md', '')}`,
           priority: 'required',
-          exists
+          exists,
+          status: 'complete' // Spec docs don't go through steering approval
         });
       }
     }
@@ -129,6 +175,25 @@ export async function getPlanningContextHandler(args: any, context: ToolContext)
   const planningGuidance = archetypeDefinition
     ? getPlanningGuidanceForArchetype(archetypeDefinition)
     : getDefaultPlanningGuidance();
+
+  // Count by status
+  const completeCount = contextFiles.filter(f => f.status === 'complete').length;
+  const pendingCount = contextFiles.filter(f => f.status === 'pending-approval').length;
+  const needsRevisionCount = contextFiles.filter(f => f.status === 'needs-revision').length;
+  const unapprovedCount = contextFiles.filter(f => f.status === 'unapproved').length;
+  const missingCount = contextFiles.filter(f => f.status === 'missing').length;
+
+  // Build warnings for incomplete docs
+  const warnings: string[] = [];
+  if (pendingCount > 0) {
+    warnings.push(`⚠️ ${pendingCount} doc(s) awaiting approval - check dashboard`);
+  }
+  if (needsRevisionCount > 0) {
+    warnings.push(`⚠️ ${needsRevisionCount} doc(s) need revision`);
+  }
+  if (unapprovedCount > 0) {
+    warnings.push(`⚠️ ${unapprovedCount} doc(s) exist but were never approved - submit for approval`);
+  }
 
   return {
     success: true,
@@ -143,11 +208,21 @@ export async function getPlanningContextHandler(args: any, context: ToolContext)
       } : undefined,
       contextFiles,
       planningGuidance,
+      statusCounts: {
+        complete: completeCount,
+        pendingApproval: pendingCount,
+        needsRevision: needsRevisionCount,
+        unapproved: unapprovedCount,
+        missing: missingCount
+      },
       existingFilesCount: contextFiles.filter(f => f.exists).length,
-      totalFilesCount: contextFiles.length
+      totalFilesCount: contextFiles.length,
+      warnings: warnings.length > 0 ? warnings : undefined
     },
     nextSteps: [
-      'Read existing context files marked as "exists: true"',
+      ...(warnings.length > 0 ? warnings : []),
+      'Read existing context files marked as status: "complete"',
+      'Files with status "pending-approval" or "unapproved" need approval workflow',
       'Consider creating missing required/recommended steering docs',
       'Use context to inform implementation planning',
       'Exit planning mode when approach is decided'
