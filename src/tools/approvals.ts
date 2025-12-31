@@ -5,6 +5,44 @@ import { join } from 'path';
 import { validateProjectPath, PathUtils } from '../core/path-utils.js';
 import { readFile } from 'fs/promises';
 import { validateTasksMarkdown, formatValidationErrors } from '../core/task-validator.js';
+import { recordSteeringStatus, recordSpecPhaseStatus, PhaseStatus } from '../core/workflow-state.js';
+
+/**
+ * Update workflow state based on approval status
+ */
+async function updateWorkflowStateFromApproval(
+  projectPath: string,
+  approval: { status: string; category: string; categoryName: string; filePath: string; id: string }
+): Promise<void> {
+  // Map approval status to phase status
+  const statusMap: Record<string, PhaseStatus> = {
+    'pending': 'pending-approval',
+    'approved': 'approved',
+    'needs-revision': 'needs-revision',
+    'rejected': 'needs-revision'
+  };
+  const phaseStatus = statusMap[approval.status] || 'in-progress';
+
+  if (approval.category === 'steering') {
+    // Extract doc name from filePath (e.g., ".spec-workflow/steering/product.md" -> "product")
+    const match = approval.filePath.match(/steering\/([^/]+)\.md$/);
+    if (match) {
+      const docName = match[1];
+      await recordSteeringStatus(projectPath, docName, phaseStatus, approval.id);
+    }
+  } else if (approval.category === 'spec') {
+    // Extract spec name and phase from filePath
+    // e.g., ".spec-workflow/specs/my-feature/requirements.md" -> spec="my-feature", phase="requirements"
+    const match = approval.filePath.match(/specs\/([^/]+)\/([^/]+)\.md$/);
+    if (match) {
+      const specName = match[1];
+      const phase = match[2] as 'requirements' | 'design' | 'tasks';
+      if (['requirements', 'design', 'tasks'].includes(phase)) {
+        await recordSpecPhaseStatus(projectPath, specName, phase, phaseStatus, approval.id);
+      }
+    }
+  }
+}
 
 /**
  * Safely translate a path, with defensive checks to provide better error messages
@@ -334,6 +372,13 @@ async function handleGetApprovalStatus(
     }
 
     await approvalStorage.stop();
+
+    // Update workflow state based on approval status
+    try {
+      await updateWorkflowStateFromApproval(validatedProjectPath, approval);
+    } catch {
+      // Don't fail the status check if state update fails
+    }
 
     const isCompleted = approval.status === 'approved' || approval.status === 'rejected';
     const canProceed = approval.status === 'approved';
