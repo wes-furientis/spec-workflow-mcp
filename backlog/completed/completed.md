@@ -59,3 +59,36 @@ All completed items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
   - Limited placeholders to 5 max
 - **Pattern adopted**: Return paths/summaries, agent calls Read if needed
 - **Already efficient**: steering-guide, get-planning-context (return status, not content)
+
+### #8 - Configuration Consistency Tests
+- **Added**: 2025-12-30
+- **Completed**: 2025-12-31T14:44:00Z
+- **Description**: Add unit tests to validate MCP server configurations and prevent configuration drift
+- **Implementation**:
+  - New `src/__tests__/config-consistency.test.ts`: 8 tests
+    - Validates no @pimzino/spec-workflow-mcp references in configs
+    - Ensures production configs use local dist/index.js path
+    - Verifies consistent server names across configs
+    - Checks plugin.json versions match package.json
+    - Validates documentation doesn't have stale usage instructions
+    - Confirms absolute paths in production configs
+  - Tests immediately caught version drift: plugin.json (2.1.7) vs package.json (1.0.0)
+  - Fixed by running `npm run sync:plugin-version`
+- **Pattern**: Config validation tests prevent drift before it causes issues
+
+### #9 - Steering Document Planning Check Tests
+- **Added**: 2025-12-30
+- **Completed**: 2025-12-31T14:47:00Z
+- **Description**: Add tests to ensure steering-guide properly instructs agents to call suggest-plan-mode before creating documents with requiresPlanning: true
+- **Implementation**:
+  - New `src/tools/__tests__/steering-planning-check.test.ts`: 19 tests
+    - Tests steering-guide includes suggest-plan-mode instruction for docs with requiresPlanning
+    - Tests suggest-plan-mode returns "required" for architecture.md, conventions.md, documentation.md (greenfield)
+    - Tests suggest-plan-mode returns "required" for legacy.md, migration.md (brownfield)
+    - Tests suggest-plan-mode returns "required" for ux.md, api.md (web-app)
+    - Tests suggest-plan-mode returns "required" for thesis.md (research-paper)
+    - Tests suggest-plan-mode returns "required" for compatibility.md (code-library)
+    - Tests planning marker file creation
+    - Tests nextSteps includes EnterPlanMode and get-steering-template
+    - Tests missing archetype handling (warns, still recommends planning)
+- **Pattern**: Archetype-specific planning requirements are properly enforced
