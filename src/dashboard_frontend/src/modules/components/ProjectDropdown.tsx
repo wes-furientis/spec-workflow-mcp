@@ -14,13 +14,20 @@ function formatArchetypeName(archetype: string | undefined): string {
     .join(' ');
 }
 
+type FilterMode = 'all' | 'active' | 'inactive';
+
 export function ProjectDropdown() {
   const { t } = useTranslation();
   const { projects, currentProject, setCurrentProject, loading } = useProjects();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to determine if a project is active (has running instances)
+  const isProjectActive = (project: { instances?: { pid: number }[] }) =>
+    (project.instances?.length ?? 0) > 0;
 
   // Close dropdown when clicking outside or pressing ESC
   useEffect(() => {
@@ -52,10 +59,23 @@ export function ProjectDropdown() {
     };
   }, [isOpen]);
 
-  // Filter projects based on search query
-  const filteredProjects = projects.filter(project =>
-    project.projectName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter projects based on search query and active/inactive filter
+  const filteredProjects = projects.filter(project => {
+    // Search filter
+    const matchesSearch = project.projectName.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Active/inactive filter
+    const active = isProjectActive(project);
+    if (filterMode === 'active' && !active) return false;
+    if (filterMode === 'inactive' && active) return false;
+
+    return true;
+  });
+
+  // Count active and inactive for display
+  const activeCount = projects.filter(isProjectActive).length;
+  const inactiveCount = projects.length - activeCount;
 
   const handleProjectSelect = (projectId: string) => {
     setCurrentProject(projectId);
@@ -107,6 +127,39 @@ export function ProjectDropdown() {
               placeholder={t('projects.search', 'Search projects...')}
               className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-gray-100"
             />
+            {/* Filter Toggle */}
+            <div className="flex gap-1 mt-2">
+              <button
+                onClick={() => setFilterMode('all')}
+                className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                  filterMode === 'all'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {t('projects.filter.all', 'All')} ({projects.length})
+              </button>
+              <button
+                onClick={() => setFilterMode('active')}
+                className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                  filterMode === 'active'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {t('projects.filter.active', 'Active')} ({activeCount})
+              </button>
+              <button
+                onClick={() => setFilterMode('inactive')}
+                className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                  filterMode === 'inactive'
+                    ? 'bg-gray-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {t('projects.filter.inactive', 'Inactive')} ({inactiveCount})
+              </button>
+            </div>
           </div>
 
           {/* Project List */}
@@ -134,12 +187,16 @@ export function ProjectDropdown() {
                       }`}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {/* Active/Inactive status dot */}
                         <div
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            isCurrent
-                              ? 'bg-indigo-600 dark:bg-indigo-400'
+                            isProjectActive(project)
+                              ? 'bg-green-500 dark:bg-green-400'
                               : 'bg-gray-400 dark:bg-gray-600'
                           }`}
+                          title={isProjectActive(project)
+                            ? t('projects.status.active', 'Active - MCP server connected')
+                            : t('projects.status.inactive', 'Inactive - no MCP server')}
                         />
                         <div className="flex flex-col min-w-0 flex-1">
                           <div className="flex items-center gap-2 min-w-0">
