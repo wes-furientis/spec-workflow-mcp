@@ -278,7 +278,27 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Low-Medium
 - **Added**: 2025-12-30
 
-### 22. Resume Workflow Tool with State Tracking
+### 22. Fix Tasks.md Preview Only Showing Phase 1
+- **Description**: The rendered markdown preview for tasks.md only displays Phase 1 tasks, not the full document
+- **Rationale**: Users need to see all task phases when reviewing tasks.md in the dashboard preview
+- **Symptoms**:
+  - Open tasks.md in dashboard preview
+  - Only Phase 1 tasks visible
+  - Other phases (2, 3, etc.) not rendered
+- **Possible causes**:
+  - Markdown parser truncating at certain point
+  - Rendering height/overflow issue
+  - Content being cut off by container
+  - Parser issue with specific markdown syntax
+- **Files to investigate**:
+  - Dashboard markdown preview component
+  - MDX editor wrapper
+  - Spec viewer page
+- **Effort**: Low-Medium
+- **Priority**: Medium (affects usability)
+- **Added**: 2025-12-30
+
+### 23. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
