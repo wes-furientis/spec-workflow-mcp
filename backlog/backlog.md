@@ -183,3 +183,32 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: High
 - **Added**: 2025-12-30
 
+### 17. Resume Workflow Tool with State Tracking
+- **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
+- **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
+- **Potential scope**:
+  - New `.spec-workflow/state.json` file tracking:
+    - Current phase (steering, requirements, design, tasks, implementation)
+    - Current spec being worked on
+    - Pending approvals
+    - Completed phases with timestamps
+    - Implementation progress (tasks completed/in-progress)
+    - Last action taken
+  - New `resume-workflow` MCP tool that:
+    - Reads state.json and validates against actual files
+    - Returns clear "you are here, do this next" guidance
+    - Blocks implementation if spec not fully approved
+    - Detects inconsistencies between state and files
+  - Update other tools to write state.json on significant actions
+  - Dashboard view showing workflow state
+- **Enforcement**: Tool returns error if trying to implement without approved spec:
+  ```
+  ⚠️ CANNOT PROCEED
+  Spec "X" is not ready for implementation:
+  - Design: ❌ PENDING APPROVAL
+  REQUIRED ACTION: Complete Phase 2 and get approval.
+  ```
+- **Priority**: High (this is causing real workflow problems)
+- **Effort**: Medium-High
+- **Added**: 2025-12-30
+
