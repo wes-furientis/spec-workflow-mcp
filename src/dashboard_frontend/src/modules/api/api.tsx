@@ -11,6 +11,16 @@ export type SpecSummary = {
   phases?: any;
 };
 
+export type ApprovalComment = {
+  type: 'selection' | 'general';
+  selectedText?: string;
+  comment: string;
+  timestamp: string;
+  lineNumber?: number;
+  characterPosition?: number;
+  highlightColor?: string;
+};
+
 export type Approval = {
   id: string;
   title: string;
@@ -19,6 +29,10 @@ export type Approval = {
   filePath?: string;
   content?: string;
   createdAt?: string;
+  respondedAt?: string;
+  response?: string;
+  annotations?: string;
+  comments?: ApprovalComment[];
 };
 
 export type ProjectInfo = {

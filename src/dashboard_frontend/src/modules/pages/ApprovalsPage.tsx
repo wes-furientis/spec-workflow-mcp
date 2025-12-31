@@ -56,6 +56,13 @@ function ApprovalItem({ a }: { a: any }) {
     }
   };
 
+  // Load existing comments from approval when component mounts or approval changes
+  useEffect(() => {
+    if (a.comments && Array.isArray(a.comments) && a.comments.length > 0) {
+      setComments(a.comments);
+    }
+  }, [a.comments]);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
