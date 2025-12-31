@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", ".", "--AutoStartDashboard"]
+      "command": "node",
+      "args": ["/home/wes/furientis/dev/tools/spec-workflow-mcp/dist/index.js", "."]
     }
   }
 }

@@ -10,7 +10,28 @@
   "steering": {
     "required": ["product", "tech", "structure"],
     "optional": [],
-    "custom": []
+    "custom": [
+      {
+        "name": "architecture",
+        "templateFile": "architecture.md",
+        "description": "Architecture Decision Records (ADRs), system diagrams, component relationships, data flow, and design patterns catalog",
+        "requiresPlanning": true,
+        "planningContext": ["product", "tech"]
+      },
+      {
+        "name": "conventions",
+        "templateFile": "conventions.md",
+        "description": "Coding standards including naming conventions, file organization, error handling patterns, and formatting rules",
+        "requiresPlanning": false
+      },
+      {
+        "name": "documentation",
+        "templateFile": "documentation.md",
+        "description": "Documentation strategy covering doc location, audience, format standards, generation tools, mathematical derivations, ASCII diagrams, sample images (plotly/matplotlib), code examples, mermaid flowcharts, and validation cases",
+        "requiresPlanning": true,
+        "planningContext": ["product", "structure"]
+      }
+    ]
   },
   "guidance": {
     "workflowEmphasis": [
@@ -18,15 +39,33 @@
       "Document technology choices and their rationale",
       "Define clear project structure early",
       "Consider scalability from the start",
-      "Establish coding standards and conventions"
+      "Establish coding standards and conventions",
+      "Set up comprehensive documentation from day one"
     ],
-    "documentationFocus": "Architecture decisions, technology rationale, and project scaffolding documentation",
+    "documentationFocus": "Architecture decisions, technology rationale, project scaffolding, and comprehensive inline + external documentation with rich examples",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
       "What frameworks and libraries best fit the requirements?",
       "How should the codebase be organized?",
       "What development patterns should be established?",
       "Are there performance or scalability requirements to consider upfront?",
-      "What testing strategy should be adopted from the start?"
+      "What testing strategy should be adopted from the start?",
+      "How will documentation be generated and maintained?",
+      "What validation cases demonstrate the system works correctly?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Overview",
+      "Installation",
+      "Quick Start",
+      "Architecture",
+      "API Reference",
+      "Examples",
+      "Configuration",
+      "Testing",
+      "Contributing",
+      "License"
     ]
   }
 }

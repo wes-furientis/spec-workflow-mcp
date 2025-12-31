@@ -4,6 +4,12 @@ import { specStatusTool, specStatusHandler } from './spec-status.js';
 import { steeringGuideTool, steeringGuideHandler } from './steering-guide.js';
 import { approvalsTool, approvalsHandler } from './approvals.js';
 import { logImplementationTool, logImplementationHandler } from './log-implementation.js';
+import {
+  getPlanningContextTool, getPlanningContextHandler,
+  suggestPlanModeTool, suggestPlanModeHandler,
+  exportPlanTool, exportPlanHandler,
+  importPlanTool, importPlanHandler
+} from './planning-tools.js';
 import { ToolContext, ToolResponse, MCPToolResponse, toMCPResponse } from '../types.js';
 
 export function registerTools(): Tool[] {
@@ -12,7 +18,12 @@ export function registerTools(): Tool[] {
     steeringGuideTool,
     specStatusTool,
     approvalsTool,
-    logImplementationTool
+    logImplementationTool,
+    // Planning integration tools
+    getPlanningContextTool,
+    suggestPlanModeTool,
+    exportPlanTool,
+    importPlanTool
   ];
 }
 
@@ -36,6 +47,19 @@ export async function handleToolCall(name: string, args: any, context: ToolConte
         break;
       case 'log-implementation':
         response = await logImplementationHandler(args, context);
+        break;
+      // Planning integration tools
+      case 'get-planning-context':
+        response = await getPlanningContextHandler(args, context);
+        break;
+      case 'suggest-plan-mode':
+        response = await suggestPlanModeHandler(args, context);
+        break;
+      case 'export-plan':
+        response = await exportPlanHandler(args, context);
+        break;
+      case 'import-plan':
+        response = await importPlanHandler(args, context);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

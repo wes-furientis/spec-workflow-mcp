@@ -54,3 +54,52 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: Medium
 - **Added**: 2025-12-30
 
+### 6. Multi-Select Question Interface for Agent Clarification
+- **Description**: Add an MCP tool similar to Claude Code's `AskUserQuestion` that allows agents to present multiple choice questions to users via the dashboard, with support for multi-select options.
+- **Rationale**: During spec development and implementation, agents often need to clarify requirements or gather user preferences. A structured Q&A interface with multiple choice options (including multi-select) provides a better UX than free-form text and ensures clear, actionable responses.
+- **Potential scope**:
+  - New MCP tool `ask-user-question` with parameters: question, options (2-4), multiSelect flag, header/label
+  - Dashboard UI component for displaying questions and collecting responses
+  - WebSocket integration for real-time question delivery and response handling
+  - Support for "Other" option allowing custom text input
+  - Question queue for handling multiple pending questions
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 8. Configuration Consistency Tests
+- **Description**: Add unit tests to validate MCP server configurations and prevent configuration drift
+- **Rationale**: MCP configurations scattered across .claude.json, .mcp.json files can become inconsistent (different paths, missing flags, pimzino vs local versions). Need automated validation to catch these issues.
+- **Potential scope**:
+  - Test that all spec-workflow MCP configs point to local build, not NPM
+  - Test that --AutoStartDashboard flag is present where expected
+  - Test that project paths are consistent
+  - Validate .claude-plugin/*.mcp.json files on build
+  - CI check to prevent committing configs that reference @pimzino/spec-workflow-mcp
+- **Priority**: High (this has caused repeated issues)
+- **Effort**: Low-Medium
+- **Added**: 2025-12-30
+
+### 9. Steering Document Planning Check Tests
+- **Description**: Add tests to ensure steering-guide properly instructs agents to call suggest-plan-mode before creating documents with requiresPlanning: true
+- **Rationale**: Agents were skipping the planning check when creating architecture.md despite the archetype requiring it. Need tests to verify the guidance is correct and complete.
+- **Potential scope**:
+  - Test that steering-guide output includes planning check instructions for docs with requiresPlanning: true
+  - Test that generateCustomDocPhase() includes PLANNING CHECK REQUIRED block when appropriate
+  - Test that suggest-plan-mode correctly detects steering doc creation tasks
+  - Integration test: given "Create architecture.md" task, verify recommend is "required"
+- **Priority**: High
+- **Effort**: Medium
+- **Added**: 2025-12-30
+
+### 7. Claude Code Planning Tool Integration
+- **Description**: Integrate spec-workflow-mcp with Claude Code's planning capabilities (EnterPlanMode/ExitPlanMode) for a seamless planning-to-implementation workflow.
+- **Rationale**: Claude Code has powerful planning tools, and spec-workflow-mcp has structured spec documents. Integrating them would enable plans to inform specs and specs to guide planning, reducing context switching and improving workflow continuity.
+- **Potential scope** (4 levels):
+  - **Level 1 - Guidance**: Update spec-workflow-guide to suggest when to use Claude Code's plan mode based on archetype
+  - **Level 2 - Context Sharing**: Claude Code automatically reads steering docs when entering plan mode for archetype-aware planning
+  - **Level 3 - Bidirectional Protocol**: New MCP tool `suggest-plan-mode` that signals when tasks should be planned first; requires changes to both projects
+  - **Level 4 - Plan Import/Export**: Export Claude Code plans to requirements.md format; import spec-workflow tasks into Claude Code task tracking; two-way sync
+- **Dependencies**: Levels 3-4 would require coordination with Claude Code development
+- **Effort**: Level 1 (Low), Level 2 (Medium), Levels 3-4 (High)
+- **Added**: 2025-12-30
+

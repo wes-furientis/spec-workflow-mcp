@@ -8,7 +8,10 @@ export const steeringGuideTool: Tool = {
   description: `Load guide for creating project steering documents.
 
 # Instructions
-Call ONLY when user explicitly requests steering document creation or asks about project architecture docs. Not part of standard spec workflow. Provides templates and guidance for product.md, tech.md, and structure.md creation. Its important that you follow this workflow exactly to avoid errors.`,
+Call ONLY when user explicitly requests steering document creation or asks about project architecture docs. Not part of standard spec workflow. Provides templates and guidance for product.md, tech.md, and structure.md creation. Its important that you follow this workflow exactly to avoid errors.
+
+# CRITICAL: Planning Check Required
+Before creating ANY steering document, you MUST call the \`suggest-plan-mode\` tool first. If the response returns \`recommendation: "required"\` or \`recommendation: "recommended"\`, you MUST use Claude Code's EnterPlanMode BEFORE creating the document. This ensures complex architectural decisions are properly planned.`,
   inputSchema: {
     type: 'object',
     properties: {},
@@ -139,6 +142,27 @@ If you still want to create project-level documentation, consider creating custo
   const phases = customDocs.map((doc, index) => generateCustomDocPhase(doc, index + 1, customDocs.length));
   const fileStructure = generateCustomFileStructure(customDocs);
 
+  // Identify which docs require planning
+  const docsRequiringPlanning = customDocs.filter(d => d.requiresPlanning);
+  const planningSection = docsRequiringPlanning.length > 0
+    ? `
+
+## CRITICAL: Planning Check Before Creating Documents
+
+Some steering documents in this archetype require planning mode. Before creating these documents, you MUST call \`suggest-plan-mode\` first:
+
+**Documents requiring planning check:**
+${docsRequiringPlanning.map(d => `- **${d.name}.md** (context: ${d.planningContext && d.planningContext.length > 0 ? d.planningContext.map(c => `${c}.md`).join(', ') : 'none'})`).join('\n')}
+
+**Process:**
+1. Call \`suggest-plan-mode\` with taskDescription: "Create <document-name>.md steering document"
+2. If recommendation is "required" or "recommended": Use \`EnterPlanMode\` first
+3. Use \`get-planning-context\` to retrieve context documents for planning
+4. Complete planning phase before creating the document
+
+**Why this matters:** These documents define foundational project decisions that benefit from structured planning and exploration.`
+    : '';
+
   return `# Steering Workflow - ${archetype.displayName}
 
 ## Overview
@@ -148,12 +172,13 @@ Create project-level guidance documents for ${archetype.displayName} projects. $
 **Documentation Focus**: ${archetype.guidance.documentationFocus}
 
 Its important that you follow this workflow exactly to avoid errors.
+${planningSection}
 
 ## Steering Documents for ${archetype.displayName}
 
 This archetype uses custom steering documents instead of the standard product.md, tech.md, and structure.md:
 
-${customDocs.map(doc => `- **${doc.name}.md**: ${doc.description}`).join('\n')}
+${customDocs.map(doc => `- **${doc.name}.md**: ${doc.description}${doc.requiresPlanning ? ' ⚠️ *Planning required*' : ''}`).join('\n')}
 
 ## Steering Workflow Phases
 
@@ -179,32 +204,55 @@ ${fileStructure}`;
 /**
  * Generate a phase section for a custom steering document
  */
-function generateCustomDocPhase(doc: { name: string; templateFile: string; description: string }, phaseNum: number, totalPhases: number): string {
+function generateCustomDocPhase(
+  doc: { name: string; templateFile: string; description: string; requiresPlanning?: boolean; planningContext?: string[] },
+  phaseNum: number,
+  totalPhases: number
+): string {
   const completionMessage = phaseNum === totalPhases
-    ? '\n11. After successful cleanup: "Steering docs complete. Ready for spec creation?"'
+    ? '\n12. After successful cleanup: "Steering docs complete. Ready for spec creation?"'
     : '';
+
+  // Generate planning check step if required
+  const planningStep = doc.requiresPlanning
+    ? `
+**PLANNING CHECK REQUIRED**:
+This document requires planning mode before creation. Call \`suggest-plan-mode\` with taskDescription: "Create ${doc.name}.md steering document".
+- If recommendation is "required" or "recommended": Use \`EnterPlanMode\` first
+- Planning context documents: ${doc.planningContext && doc.planningContext.length > 0 ? doc.planningContext.map(d => `${d}.md`).join(', ') : 'none'}
+- Use \`get-planning-context\` to retrieve these documents for planning
+
+`
+    : '';
+
+  const stepOffset = doc.requiresPlanning ? 1 : 0;
 
   return `### Phase ${phaseNum}: ${capitalizeFirst(doc.name)} Document
 **Purpose**: ${doc.description}
-
+${planningStep}
 **File Operations**:
 - Check for custom template: \`.spec-workflow/user-templates/${doc.templateFile}\`
 - Read template: \`.spec-workflow/templates/${doc.templateFile}\` (if no custom template)
 - Create document: \`.spec-workflow/steering/${doc.name}.md\`
 
 **Tools**:
+- suggest-plan-mode: Check if planning is required before creating this document
+- get-planning-context: Retrieve steering docs for planning mode
 - approvals: Manage approval workflow (actions: request, status, delete)
 
 **Process**:
-1. Check for custom template at \`.spec-workflow/user-templates/${doc.templateFile}\`
-2. If no custom template, read from \`.spec-workflow/templates/${doc.templateFile}\`
-3. Generate ${doc.name} content based on project requirements
-4. Create \`${doc.name}.md\` at \`.spec-workflow/steering/${doc.name}.md\`
-5. Request approval using approvals tool with action:'request' (filePath only)
-6. Poll status using approvals with action:'status' until approved/needs-revision (NEVER accept verbal approval)
-7. If needs-revision: update document using comments, create NEW approval, do NOT proceed
-8. Once approved: use approvals with action:'delete' (must succeed) before proceeding
-9. If delete fails: STOP - return to polling${completionMessage}`;
+${doc.requiresPlanning ? `1. FIRST: Call \`suggest-plan-mode\` with taskDescription: "Create ${doc.name}.md steering document"
+   - If recommendation is "required" or "recommended": Use \`EnterPlanMode\` before proceeding
+   - Complete planning phase before continuing
+` : ''}${1 + stepOffset}. Check for custom template at \`.spec-workflow/user-templates/${doc.templateFile}\`
+${2 + stepOffset}. If no custom template, read from \`.spec-workflow/templates/${doc.templateFile}\`
+${3 + stepOffset}. Generate ${doc.name} content based on project requirements
+${4 + stepOffset}. Create \`${doc.name}.md\` at \`.spec-workflow/steering/${doc.name}.md\`
+${5 + stepOffset}. Request approval using approvals tool with action:'request' (filePath only)
+${6 + stepOffset}. Poll status using approvals with action:'status' until approved/needs-revision (NEVER accept verbal approval)
+${7 + stepOffset}. If needs-revision: update document using comments, create NEW approval, do NOT proceed
+${8 + stepOffset}. Once approved: use approvals with action:'delete' (must succeed) before proceeding
+${9 + stepOffset}. If delete fails: STOP - return to polling${completionMessage}`;
 }
 
 /**
@@ -240,6 +288,25 @@ function getDefaultSteeringGuide(): string {
 ## Overview
 
 Create project-level guidance documents when explicitly requested. Steering docs establish vision, architecture, and conventions for established codebases. Its important that you follow this workflow exactly to avoid errors.
+
+## CRITICAL: Planning Check Before Creating Documents
+
+Before creating ANY steering document, you MUST call the \`suggest-plan-mode\` tool first:
+
+\`\`\`
+suggest-plan-mode with taskDescription: "Create <document-name>.md steering document"
+\`\`\`
+
+**If the response returns:**
+- \`recommendation: "required"\` → You MUST use \`EnterPlanMode\` before creating the document
+- \`recommendation: "recommended"\` → You SHOULD use \`EnterPlanMode\` for best results
+- \`recommendation: "optional"\` → You may proceed directly
+
+**Why this matters:** Steering documents define foundational project decisions. Planning mode ensures proper exploration of architecture, trade-offs, and existing patterns before committing to documentation.
+
+**Tools for Planning:**
+- \`suggest-plan-mode\`: Check if planning is required
+- \`get-planning-context\`: Retrieve existing steering docs to inform planning
 
 ## Workflow Diagram
 

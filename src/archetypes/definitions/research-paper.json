@@ -12,14 +12,38 @@
     "optional": [],
     "custom": [
       {
+        "name": "thesis",
+        "templateFile": "thesis.md",
+        "description": "Core argument, research questions, hypotheses, and the central thesis statement with supporting rationale",
+        "requiresPlanning": true,
+        "planningContext": []
+      },
+      {
         "name": "methodology",
         "templateFile": "methodology.md",
-        "description": "Research methodology, data collection methods, and analysis approach"
+        "description": "Research methodology, data collection methods, analysis approach, experimental design, and validation procedures",
+        "requiresPlanning": true,
+        "planningContext": ["thesis"]
       },
       {
         "name": "literature",
         "templateFile": "literature.md",
-        "description": "Literature review structure and key citations to incorporate"
+        "description": "Literature review structure, key citations to incorporate, theoretical framework, and positioning relative to existing work",
+        "requiresPlanning": true,
+        "planningContext": ["thesis"]
+      },
+      {
+        "name": "evidence",
+        "templateFile": "evidence.md",
+        "description": "Data sources, evidence requirements, statistical methods, figures and tables strategy, and reproducibility requirements",
+        "requiresPlanning": true,
+        "planningContext": ["thesis", "methodology"]
+      },
+      {
+        "name": "publication",
+        "templateFile": "publication.md",
+        "description": "Target publication venue, formatting requirements, submission timeline, peer review strategy, and revision planning",
+        "requiresPlanning": false
       }
     ]
   },
@@ -29,15 +53,31 @@
       "Document methodology rigorously",
       "Track citations and references systematically",
       "Plan peer review and revision cycles",
-      "Consider target publication venue requirements"
+      "Consider target publication venue requirements",
+      "Ensure reproducibility of results"
     ],
-    "documentationFocus": "Research methodology, literature citations, and academic formatting requirements",
+    "documentationFocus": "Research methodology, literature citations, evidence presentation, and academic formatting requirements",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
       "What is the core research question or thesis?",
       "What methodology best supports the research goals?",
       "Are all claims properly cited and supported?",
       "Does the structure follow target venue guidelines?",
-      "What data or evidence is needed to support conclusions?"
+      "What data or evidence is needed to support conclusions?",
+      "How will results be validated and reproduced?",
+      "What figures and tables are needed to present findings?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Abstract",
+      "Research Questions",
+      "Methodology Overview",
+      "Key Findings",
+      "Data Availability",
+      "Citation",
+      "Acknowledgments",
+      "License"
     ]
   }
 }

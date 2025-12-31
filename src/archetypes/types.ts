@@ -10,6 +10,10 @@ export interface SteeringDocDef {
   templateFile: string;
   /** Description of what this document covers */
   description: string;
+  /** Whether creating this doc requires planning mode first (default: false) */
+  requiresPlanning?: boolean;
+  /** Which steering docs to read as context before planning this doc */
+  planningContext?: string[];
 }
 
 /**
@@ -44,8 +48,18 @@ export interface ArchetypeGuidance {
   workflowEmphasis: string[];
   /** What "documentation" means for this project type */
   documentationFocus: string;
+  /** Documentation style preference (e.g., "rich-inline-external", "minimal-inline", "external-first") */
+  documentationStyle?: string;
   /** Things to highlight when creating specs */
   keyConsiderations: string[];
+}
+
+/**
+ * README structure configuration
+ */
+export interface ArchetypeReadme {
+  /** Sections to include in README, in order */
+  sections: string[];
 }
 
 /**
@@ -64,6 +78,8 @@ export interface ArchetypeDefinition {
   steering: ArchetypeSteering;
   /** Guidance for AI agents */
   guidance: ArchetypeGuidance;
+  /** README structure for this archetype */
+  readme?: ArchetypeReadme;
 }
 
 /**

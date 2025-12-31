@@ -1,7 +1,7 @@
 {
   "name": "brownfield",
   "displayName": "Brownfield Project",
-  "description": "Updates to existing codebases. Emphasizes existing patterns, migration strategies, and backward compatibility.",
+  "description": "Updates to existing codebases. Emphasizes understanding existing patterns, migration strategies, and backward compatibility.",
   "templates": {
     "requirements": true,
     "design": true,
@@ -10,23 +10,61 @@
   "steering": {
     "required": ["product", "tech", "structure"],
     "optional": [],
-    "custom": []
+    "custom": [
+      {
+        "name": "legacy",
+        "templateFile": "legacy.md",
+        "description": "Existing patterns to follow, technical debt inventory, code areas to avoid modifying, and historical context",
+        "requiresPlanning": true,
+        "planningContext": ["tech", "structure"]
+      },
+      {
+        "name": "migration",
+        "templateFile": "migration.md",
+        "description": "Migration strategies, backward compatibility requirements, deprecation policies, and rollback procedures",
+        "requiresPlanning": true,
+        "planningContext": ["product", "tech", "legacy"]
+      },
+      {
+        "name": "documentation",
+        "templateFile": "documentation.md",
+        "description": "Documentation strategy for existing docs, where to add new documentation, updating outdated docs, and maintaining consistency with existing style",
+        "requiresPlanning": false
+      }
+    ]
   },
   "guidance": {
     "workflowEmphasis": [
-      "Understand and respect existing code patterns",
+      "Understand existing patterns before making changes",
+      "Document migration paths and compatibility concerns",
+      "Identify and catalog technical debt",
       "Plan for backward compatibility",
-      "Consider migration paths for breaking changes",
-      "Document integration points with existing code",
-      "Identify and manage technical debt"
+      "Test against existing functionality",
+      "Update documentation incrementally"
     ],
-    "documentationFocus": "Integration with existing systems, migration plans, and compatibility considerations",
+    "documentationFocus": "Extending existing documentation, migration guides, deprecation notices, and maintaining consistency with established patterns",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
-      "What existing patterns should be followed?",
-      "Are there deprecated APIs or patterns to avoid?",
-      "How will this change affect existing functionality?",
-      "What migration strategy is needed for existing data or users?",
-      "Are there integration tests covering affected areas?"
+      "What existing patterns must be preserved?",
+      "Which areas of the codebase are safe to modify?",
+      "What backward compatibility is required?",
+      "How will changes be rolled back if needed?",
+      "What technical debt should be addressed vs avoided?",
+      "How does this change integrate with existing documentation?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Overview",
+      "What's New",
+      "Migration Guide",
+      "Breaking Changes",
+      "Installation",
+      "Configuration",
+      "API Reference",
+      "Deprecation Notices",
+      "Contributing",
+      "License"
     ]
   }
 }

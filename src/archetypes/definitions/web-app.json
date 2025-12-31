@@ -10,7 +10,34 @@
   "steering": {
     "required": ["product", "tech", "structure"],
     "optional": [],
-    "custom": []
+    "custom": [
+      {
+        "name": "ux",
+        "templateFile": "ux.md",
+        "description": "Design system, UI/UX guidelines, accessibility standards (WCAG), responsive breakpoints, and user interaction patterns",
+        "requiresPlanning": true,
+        "planningContext": ["product"]
+      },
+      {
+        "name": "api",
+        "templateFile": "api.md",
+        "description": "API design principles, REST/GraphQL conventions, endpoint patterns, response formats, error handling, and authentication",
+        "requiresPlanning": true,
+        "planningContext": ["tech", "structure"]
+      },
+      {
+        "name": "deployment",
+        "templateFile": "deployment.md",
+        "description": "Deployment strategy, environments (dev/staging/prod), CI/CD pipelines, infrastructure requirements, and monitoring",
+        "requiresPlanning": false
+      },
+      {
+        "name": "documentation",
+        "templateFile": "documentation.md",
+        "description": "User-facing documentation strategy, help content, onboarding flows, API docs for integrators, and internal developer docs",
+        "requiresPlanning": false
+      }
+    ]
   },
   "guidance": {
     "workflowEmphasis": [
@@ -18,15 +45,33 @@
       "Consider accessibility requirements (WCAG)",
       "Plan responsive design for multiple devices",
       "Document component hierarchy and state management",
-      "Address performance and loading considerations"
+      "Address performance and loading considerations",
+      "Establish comprehensive documentation for users and developers"
     ],
-    "documentationFocus": "User flows, UI component documentation, and end-user facing features",
+    "documentationFocus": "User flows, UI component documentation, API reference, and end-user help content",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
       "What are the key user journeys?",
       "How will the UI adapt to different screen sizes?",
       "What accessibility standards must be met?",
       "How is application state managed?",
-      "What is the performance budget for initial load?"
+      "What is the performance budget for initial load?",
+      "How will the API be documented for consumers?",
+      "What deployment environments are needed?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Overview",
+      "Features",
+      "Demo",
+      "Installation",
+      "Configuration",
+      "Usage",
+      "API Reference",
+      "Deployment",
+      "Contributing",
+      "License"
     ]
   }
 }

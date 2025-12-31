@@ -10,7 +10,13 @@
   "steering": {
     "required": ["product", "tech", "structure"],
     "optional": [],
-    "custom": []
+    "custom": [
+      {
+        "name": "documentation",
+        "templateFile": "documentation.md",
+        "description": "Documentation strategy covering what to document, where docs live, format standards, and generation tools"
+      }
+    ]
   },
   "guidance": {
     "workflowEmphasis": [
@@ -21,12 +27,23 @@
       "Maintain clear traceability from requirements to tasks"
     ],
     "documentationFocus": "Balanced coverage of product vision, technical approach, and project structure",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
       "What problem is being solved?",
       "Who are the stakeholders and users?",
       "What are the technical constraints?",
       "How will success be measured?",
       "What are the key risks and mitigations?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Overview",
+      "Installation",
+      "Usage",
+      "Configuration",
+      "Contributing",
+      "License"
     ]
   }
 }

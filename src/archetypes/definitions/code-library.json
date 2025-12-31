@@ -10,7 +10,29 @@
   "steering": {
     "required": ["product", "tech"],
     "optional": ["structure"],
-    "custom": []
+    "custom": [
+      {
+        "name": "api",
+        "templateFile": "api.md",
+        "description": "Public API design principles, method signatures, parameter conventions, return types, versioning policy, and breaking change guidelines",
+        "requiresPlanning": true,
+        "planningContext": ["product", "tech"]
+      },
+      {
+        "name": "compatibility",
+        "templateFile": "compatibility.md",
+        "description": "Version support matrix, platform compatibility, dependency requirements, upgrade paths, and deprecation timeline",
+        "requiresPlanning": true,
+        "planningContext": ["tech", "api"]
+      },
+      {
+        "name": "documentation",
+        "templateFile": "documentation.md",
+        "description": "API documentation strategy, docstring conventions, example code, tutorials, getting started guides, and generated docs (Sphinx/MkDocs/JSDoc)",
+        "requiresPlanning": true,
+        "planningContext": ["product", "api"]
+      }
+    ]
   },
   "guidance": {
     "workflowEmphasis": [
@@ -18,15 +40,33 @@
       "Plan for semantic versioning",
       "Consider backward compatibility for consumers",
       "Document all public interfaces thoroughly",
-      "Minimize dependencies and external requirements"
+      "Minimize dependencies and external requirements",
+      "Provide comprehensive examples and tutorials"
     ],
-    "documentationFocus": "API reference documentation, usage examples, and integration guides for library consumers",
+    "documentationFocus": "API reference documentation, usage examples, mathematical derivations where applicable, and integration guides for library consumers",
+    "documentationStyle": "rich-inline-external",
     "keyConsiderations": [
       "Is the public API intuitive and well-documented?",
       "What breaking changes require major version bumps?",
       "Are there clear usage examples for common scenarios?",
       "How will consumers upgrade between versions?",
-      "What are the minimum requirements and dependencies?"
+      "What are the minimum requirements and dependencies?",
+      "Are all public methods documented with examples?",
+      "What validation cases demonstrate correct behavior?"
+    ]
+  },
+  "readme": {
+    "sections": [
+      "Overview",
+      "Installation",
+      "Quick Start",
+      "API Reference",
+      "Examples",
+      "Configuration",
+      "Compatibility",
+      "Changelog",
+      "Contributing",
+      "License"
     ]
   }
 }

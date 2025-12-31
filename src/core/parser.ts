@@ -1,8 +1,10 @@
 import { readdir, readFile, stat } from 'fs/promises';
 import { join } from 'path';
 import { PathUtils } from './path-utils.js';
-import { SpecData, SteeringStatus, PhaseStatus } from '../types.js';
+import { SpecData, SteeringStatus, SteeringDocumentInfo, PhaseStatus } from '../types.js';
 import { parseTaskProgress } from './task-parser.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
+import { ArchetypeDefinition, SteeringDocDef } from '../archetypes/types.js';
 
 export class SpecParser {
   constructor(private projectPath: string) {}
@@ -75,34 +77,169 @@ export class SpecParser {
   }
 
 
-  async getProjectSteeringStatus(): Promise<SteeringStatus> {
+  async getProjectSteeringStatus(archetypeName?: string): Promise<SteeringStatus> {
     const steeringPath = PathUtils.getSteeringPath(this.projectPath);
-    
+
+    // Get archetype definition if specified
+    let archetype: ArchetypeDefinition | null = null;
+    if (archetypeName) {
+      const result = await archetypeRegistry.get(archetypeName);
+      archetype = result ?? null;
+    }
+
     try {
       const stats = await stat(steeringPath);
-      
+
+      // Always check standard docs for backward compatibility
       const productExists = await this.fileExists(join(steeringPath, 'product.md'));
       const techExists = await this.fileExists(join(steeringPath, 'tech.md'));
       const structureExists = await this.fileExists(join(steeringPath, 'structure.md'));
-      
+
+      const documents: Record<string, boolean> = {
+        product: productExists,
+        tech: techExists,
+        structure: structureExists
+      };
+
+      // Build the document list based on archetype
+      const documentList: SteeringDocumentInfo[] = [];
+
+      if (archetype) {
+        // Use archetype-specific steering documents
+        const { required, optional, custom } = archetype.steering;
+
+        // Add required standard docs
+        for (const docName of required) {
+          const exists = await this.fileExists(join(steeringPath, `${docName}.md`));
+          documents[docName] = exists;
+          documentList.push({
+            name: docName,
+            displayName: this.getDisplayName(docName),
+            exists,
+            lastModified: exists ? await this.getFileModTime(join(steeringPath, `${docName}.md`)) : undefined
+          });
+        }
+
+        // Add optional standard docs
+        for (const docName of optional) {
+          const exists = await this.fileExists(join(steeringPath, `${docName}.md`));
+          documents[docName] = exists;
+          documentList.push({
+            name: docName,
+            displayName: this.getDisplayName(docName),
+            exists,
+            lastModified: exists ? await this.getFileModTime(join(steeringPath, `${docName}.md`)) : undefined
+          });
+        }
+
+        // Add custom steering docs
+        for (const customDoc of custom) {
+          const exists = await this.fileExists(join(steeringPath, `${customDoc.name}.md`));
+          documents[customDoc.name] = exists;
+          documentList.push({
+            name: customDoc.name,
+            displayName: this.getDisplayName(customDoc.name),
+            exists,
+            lastModified: exists ? await this.getFileModTime(join(steeringPath, `${customDoc.name}.md`)) : undefined,
+            requiresPlanning: customDoc.requiresPlanning,
+            planningContext: customDoc.planningContext
+          });
+        }
+      } else {
+        // Default: use standard steering documents
+        documentList.push(
+          { name: 'product', displayName: 'Product', exists: productExists },
+          { name: 'tech', displayName: 'Technical', exists: techExists },
+          { name: 'structure', displayName: 'Structure', exists: structureExists }
+        );
+      }
+
       return {
         exists: stats.isDirectory(),
-        documents: {
-          product: productExists,
-          tech: techExists,
-          structure: structureExists
-        },
+        documents,
+        documentList,
+        archetype: archetype?.name,
+        archetypeDisplayName: archetype?.displayName,
         lastModified: stats.mtime.toISOString()
       };
     } catch (error) {
+      // Directory doesn't exist - still return archetype info if available
+      const documentList: SteeringDocumentInfo[] = [];
+      const documents: Record<string, boolean> = {
+        product: false,
+        tech: false,
+        structure: false
+      };
+
+      if (archetype) {
+        const { required, optional, custom } = archetype.steering;
+
+        for (const docName of [...required, ...optional]) {
+          documents[docName] = false;
+          documentList.push({
+            name: docName,
+            displayName: this.getDisplayName(docName),
+            exists: false
+          });
+        }
+
+        for (const customDoc of custom) {
+          documents[customDoc.name] = false;
+          documentList.push({
+            name: customDoc.name,
+            displayName: this.getDisplayName(customDoc.name),
+            exists: false,
+            requiresPlanning: customDoc.requiresPlanning,
+            planningContext: customDoc.planningContext
+          });
+        }
+      } else {
+        documentList.push(
+          { name: 'product', displayName: 'Product', exists: false },
+          { name: 'tech', displayName: 'Technical', exists: false },
+          { name: 'structure', displayName: 'Structure', exists: false }
+        );
+      }
+
       return {
         exists: false,
-        documents: {
-          product: false,
-          tech: false,
-          structure: false
-        }
+        documents,
+        documentList,
+        archetype: archetype?.name,
+        archetypeDisplayName: archetype?.displayName
       };
+    }
+  }
+
+  private getDisplayName(docName: string): string {
+    const displayNames: Record<string, string> = {
+      product: 'Product',
+      tech: 'Technical',
+      structure: 'Structure',
+      architecture: 'Architecture',
+      conventions: 'Conventions',
+      documentation: 'Documentation',
+      api: 'API',
+      ux: 'UX',
+      deployment: 'Deployment',
+      legacy: 'Legacy',
+      migration: 'Migration',
+      compatibility: 'Compatibility',
+      thesis: 'Thesis',
+      methodology: 'Methodology',
+      literature: 'Literature',
+      evidence: 'Evidence',
+      publication: 'Publication'
+    };
+    return displayNames[docName] || docName.charAt(0).toUpperCase() + docName.slice(1);
+  }
+
+  private async getFileModTime(filePath: string): Promise<string | undefined> {
+    try {
+      const stats = await stat(filePath);
+      return stats.mtime.toISOString();
+    } catch {
+      return undefined;
     }
   }
 

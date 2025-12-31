@@ -1,84 +1,58 @@
-# Spec Workflow MCP
+# Spec Workflow MCP (Local Fork)
 
-[![npm version](https://img.shields.io/npm/v/@pimzino/spec-workflow-mcp)](https://www.npmjs.com/package/@pimzino/spec-workflow-mcp)
-[![VSCode Extension](https://vsmarketplacebadges.dev/version-short/Pimzino.spec-workflow-mcp.svg)](https://marketplace.visualstudio.com/items?itemName=Pimzino.spec-workflow-mcp)
+A Model Context Protocol (MCP) server for structured spec-driven development with real-time dashboard.
 
-A Model Context Protocol (MCP) server for structured spec-driven development with real-time dashboard and VSCode extension.
+> This is a local fork of [Pimzino/spec-workflow-mcp](https://github.com/Pimzino/spec-workflow-mcp) with customizations for our development workflow.
 
-## ☕ Support This Project
+## Key Features
 
-<a href="https://buymeacoffee.com/Pimzino" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
-
-## 📺 Showcase
-
-### 🔄 Approval System in Action
-<a href="https://www.youtube.com/watch?v=C-uEa3mfxd0" target="_blank">
-  <img src="https://img.youtube.com/vi/C-uEa3mfxd0/maxresdefault.jpg" alt="Approval System Demo" width="600">
-</a>
-
-*See how the approval system works: create documents, request approval through the dashboard, provide feedback, and track revisions.*
-
-### 📊 Dashboard & Spec Management
-<a href="https://www.youtube.com/watch?v=g9qfvjLUWf8" target="_blank">
-  <img src="https://img.youtube.com/vi/g9qfvjLUWf8/maxresdefault.jpg" alt="Dashboard Demo" width="600">
-</a>
-
-*Explore the real-time dashboard: view specs, track progress, navigate documents, and monitor your development workflow.*
-
-## ✨ Key Features
-
-- **Structured Development Workflow** - Sequential spec creation (Requirements → Design → Tasks)
+- **Structured Development Workflow** - Sequential spec creation (Requirements -> Design -> Tasks)
 - **Real-Time Web Dashboard** - Monitor specs, tasks, and progress with live updates
-- **VSCode Extension** - Integrated sidebar dashboard for VSCode users
 - **Project Archetypes** - Pre-configured templates for different project types (greenfield, brownfield, libraries, etc.)
-- **Auto-Discovery** - Automatically finds and registers projects in your workspace
+- **Claude Code Planning Integration** - Seamless integration with Claude Code's EnterPlanMode/ExitPlanMode
 - **Approval Workflow** - Complete approval process with revisions
 - **Task Progress Tracking** - Visual progress bars and detailed status
 - **Implementation Logs** - Searchable logs of all task implementations with code statistics
-- **Multi-Language Support** - Available in 11 languages
 
-## 🌍 Supported Languages
+## Quick Start (Local Development)
 
-🇺🇸 English • 🇯🇵 日本語 • 🇨🇳 中文 • 🇪🇸 Español • 🇧🇷 Português • 🇩🇪 Deutsch • 🇫🇷 Français • 🇷🇺 Русский • 🇮🇹 Italiano • 🇰🇷 한국어 • 🇸🇦 العربية
+### Prerequisites
 
-**📖 Documentation in your language:**
+```bash
+# Build the project first
+cd /home/wes/furientis/dev/tools/spec-workflow-mcp
+npm install
+npm run build
+```
 
-[English](README.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [Español](README.es.md) | [Português](README.pt.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [Русский](README.ru.md) | [Italiano](README.it.md) | [한국어](README.ko.md) | [العربية](README.ar.md)
+### Step 1: Start the Dashboard (once)
 
-## 🚀 Quick Start
+```bash
+node /home/wes/furientis/dev/tools/spec-workflow-mcp/dist/index.js --dashboard
+```
 
-### Step 1: Add to your AI tool
+The dashboard runs at http://localhost:5000. Only one instance is needed for all projects.
 
-Add to your MCP configuration (see client-specific setup below):
+### Step 2: Add MCP Server to a Project
 
+For Claude Code CLI:
+```bash
+claude mcp add spec-workflow node /home/wes/furientis/dev/tools/spec-workflow-mcp/dist/index.js -- /path/to/your/project
+```
+
+For other MCP clients, add to your configuration:
 ```json
 {
   "mcpServers": {
     "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
+      "command": "node",
+      "args": ["/home/wes/furientis/dev/tools/spec-workflow-mcp/dist/index.js", "/path/to/your/project"]
     }
   }
 }
 ```
 
-### Step 2: Choose your interface
-
-**Option A: Web Dashboard** (Required for CLI users)
-Start the dashboard (runs on port 5000 by default):
-```bash
-npx -y @pimzino/spec-workflow-mcp@latest --dashboard
-```
-
-The dashboard will be accessible at: http://localhost:5000
-
-> **Note:** Only one dashboard instance is needed. All your projects will connect to the same dashboard.
-
-**Option B: VSCode Extension** (Recommended for VSCode users)
-
-Install [Spec Workflow MCP Extension](https://marketplace.visualstudio.com/items?itemName=Pimzino.spec-workflow-mcp) from the VSCode marketplace.
-
-## 📝 How to Use
+## How to Use
 
 Simply mention spec-workflow in your conversation:
 
@@ -86,256 +60,9 @@ Simply mention spec-workflow in your conversation:
 - **"List my specs"** - Shows all specs and their status
 - **"Execute task 1.2 in spec user-auth"** - Runs a specific task
 
-[See more examples →](docs/PROMPTING-GUIDE.md)
+[See more examples](docs/PROMPTING-GUIDE.md)
 
-## 🔧 MCP Client Setup
-
-<details>
-<summary><strong>Augment Code</strong></summary>
-
-Configure in your Augment settings:
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Claude Code CLI</strong></summary>
-
-Add to your MCP configuration:
-```bash
-claude mcp add spec-workflow npx @pimzino/spec-workflow-mcp@latest -- /path/to/your/project
-```
-
-**Important Notes:**
-- The `-y` flag bypasses npm prompts for smoother installation
-- The `--` separator ensures the path is passed to the spec-workflow script, not to npx
-- Replace `/path/to/your/project` with your actual project directory path
-
-**Alternative for Windows (if the above doesn't work):**
-```bash
-claude mcp add spec-workflow cmd.exe /c "npx @pimzino/spec-workflow-mcp@latest /path/to/your/project"
-```
-</details>
-
-<details>
-<summary><strong>Claude Desktop</strong></summary>
-
-Add to `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-
-> **Important:** Run the dashboard separately with `--dashboard` before starting the MCP server.
-
-</details>
-
-<details>
-<summary><strong>Cline/Claude Dev</strong></summary>
-
-Add to your MCP server configuration:
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Continue IDE Extension</strong></summary>
-
-Add to your Continue configuration:
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Cursor IDE</strong></summary>
-
-Add to your Cursor settings (`settings.json`):
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>OpenCode</strong></summary>
-
-Add to your `opencode.json` configuration file:
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "spec-workflow": {
-      "type": "local",
-      "command": ["npx", "-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"],
-      "enabled": true
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Windsurf</strong></summary>
-
-Add to your `~/.codeium/windsurf/mcp_config.json` configuration file:
-```json
-{
-  "mcpServers": {
-    "spec-workflow": {
-      "command": "npx",
-      "args": ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Codex</strong></summary>
-
-Add to your `~/.codex/config.toml` configuration file:
-```toml
-[mcp_servers.spec-workflow]
-command = "npx"
-args = ["-y", "@pimzino/spec-workflow-mcp@latest", "/path/to/your/project"]
-```
-</details>
-
-## 🐳 Docker Deployment
-
-Run the dashboard in a Docker container for isolated deployment:
-
-```bash
-# Using Docker Compose (recommended)
-cd containers
-docker-compose up --build
-
-# Or using Docker CLI
-docker build -f containers/Dockerfile -t spec-workflow-mcp .
-docker run -p 5000:5000 -v "./workspace/.spec-workflow:/workspace/.spec-workflow:rw" spec-workflow-mcp
-```
-
-The dashboard will be available at: http://localhost:5000
-
-[See Docker setup guide →](containers/README.md)
-
-## 🔒 Security
-
-Spec-Workflow MCP includes enterprise-grade security features suitable for corporate environments:
-
-### ✅ Implemented Security Controls
-
-| Feature | Description |
-|---------|-------------|
-| **Localhost Binding** | Binds to `127.0.0.1` by default, preventing network exposure |
-| **Rate Limiting** | 120 requests/minute per client with automatic cleanup |
-| **Audit Logging** | Structured JSON logs with timestamp, actor, action, and result |
-| **Security Headers** | X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, CSP, Referrer-Policy |
-| **CORS Protection** | Restricted to localhost origins by default |
-| **Docker Hardening** | Non-root user, read-only filesystem, dropped capabilities, resource limits |
-
-### ⚠️ Not Yet Implemented
-
-| Feature | Workaround |
-|---------|------------|
-| **HTTPS/TLS** | Use a reverse proxy (nginx, Apache) with TLS certificates |
-| **User Authentication** | Use a reverse proxy with Basic Auth or OAuth2 Proxy for SSO |
-
-### For External/Network Access
-
-If you need to expose the dashboard beyond localhost, we recommend:
-
-1. **Keep dashboard on localhost** (`127.0.0.1`)
-2. **Use nginx or Apache** as a reverse proxy with:
-   - TLS/HTTPS termination
-   - Basic authentication or OAuth2
-3. **Configure firewall rules** to restrict access
-
-```nginx
-# Example nginx reverse proxy with auth
-server {
-    listen 443 ssl;
-    server_name dashboard.example.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    auth_basic "Dashboard Access";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
-
-[See Docker security guide →](containers/README.md#security-configuration)
-
-## 🔒 Sandboxed Environments
-
-For sandboxed environments (e.g., Codex CLI with `sandbox_mode=workspace-write`) where `$HOME` is read-only, use the `SPEC_WORKFLOW_HOME` environment variable to redirect global state files to a writable location:
-
-```bash
-SPEC_WORKFLOW_HOME=/workspace/.spec-workflow-mcp npx -y @pimzino/spec-workflow-mcp@latest /workspace
-```
-
-[See Configuration Guide →](docs/CONFIGURATION.md#environment-variables)
-
-## 📚 Documentation
-
-- [Configuration Guide](docs/CONFIGURATION.md) - Command-line options, config files
-- [User Guide](docs/USER-GUIDE.md) - Comprehensive usage examples
-- [Workflow Process](docs/WORKFLOW.md) - Development workflow and best practices
-- [Interfaces Guide](docs/INTERFACES.md) - Dashboard and VSCode extension details
-- [Prompting Guide](docs/PROMPTING-GUIDE.md) - Advanced prompting examples
-- [Tools Reference](docs/TOOLS-REFERENCE.md) - Complete tools documentation
-- [Development](docs/DEVELOPMENT.md) - Contributing and development setup
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
-
-## 🏗️ Project Archetypes
-
-Project archetypes are pre-configured templates that customize the spec workflow for different types of projects. Each archetype provides tailored guidance, steering documents, and workflow emphasis appropriate for that project type.
-
-### Bundled Archetypes
+## Project Archetypes
 
 | Archetype | Description |
 |-----------|-------------|
@@ -344,46 +71,21 @@ Project archetypes are pre-configured templates that customize the spec workflow
 | **code-library** | Software libraries and packages. Emphasizes API documentation, versioning, and developer experience. |
 | **web-app** | User-facing web applications. Emphasizes UI/UX considerations, user flows, and frontend architecture. |
 | **research-paper** | Academic papers and research documents. Emphasizes citations, methodology, and scholarly rigor. |
-| **generic** | Default project type suitable for any specification. Includes all templates and standard steering documents. |
+| **generic** | Default project type suitable for any specification. |
 
-### Setting an Archetype
+Set the archetype via the dashboard Settings page.
 
-Set the archetype for a project using the dashboard:
+## Claude Code Planning Integration
 
-1. Open the dashboard and select your project
-2. Go to **Settings**
-3. Use the **Project Archetype** dropdown to select an archetype
-4. The archetype is saved automatically
+This fork includes deep integration with Claude Code's planning tools:
 
-When an archetype is set, the AI assistant receives tailored guidance for that project type, including workflow recommendations and key considerations.
+- **suggest-plan-mode** - Recommends when to use EnterPlanMode based on task complexity
+- **get-planning-context** - Provides archetype-aware context for planning
+- **export-plan** / **import-plan** - Convert between spec tasks and planning documents
 
-## 🔍 Auto-Discovery
+Archetypes can define `requiresPlanning: true` for steering documents that need planning mode before creation.
 
-When running the dashboard with a context path, spec-workflow automatically discovers and registers projects that contain a `.spec-workflow` directory.
-
-### How It Works
-
-1. **Initial Scan**: On dashboard startup, the specified directory is scanned recursively (up to 3 levels deep)
-2. **Project Detection**: Any directory containing a `.spec-workflow` folder is registered as a project
-3. **Live Watching**: New projects created while the dashboard is running are automatically detected and added
-
-### What Gets Scanned
-
-The scanner looks for `.spec-workflow` directories in your workspace while skipping:
-- Hidden directories (except `.spec-workflow` itself)
-- `node_modules`, `vendor`, `__pycache__`, `.git`, `dist`, `build`, `target`
-
-### Usage
-
-To enable auto-discovery, run the dashboard with a path argument:
-
-```bash
-npx -y @pimzino/spec-workflow-mcp@latest --dashboard /path/to/workspace
-```
-
-All projects under `/path/to/workspace` that have a `.spec-workflow` directory will be automatically available in the dashboard.
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 your-project/
@@ -394,10 +96,9 @@ your-project/
     steering/
     templates/
     user-templates/
-    config.example.toml
 ```
 
-## 🛠️ Development
+## Development
 
 ```bash
 # Install dependencies
@@ -408,20 +109,33 @@ npm run build
 
 # Run in development mode
 npm run dev
+
+# Run tests
+npm test
+
+# Start dashboard for development
+npm run dashboard
 ```
 
-[See development guide →](docs/DEVELOPMENT.md)
+## Documentation
 
-## 📄 License
+- [Configuration Guide](docs/CONFIGURATION.md) - Command-line options, config files
+- [User Guide](docs/USER-GUIDE.md) - Comprehensive usage examples
+- [Workflow Process](docs/WORKFLOW.md) - Development workflow and best practices
+- [Interfaces Guide](docs/INTERFACES.md) - Dashboard details
+- [Prompting Guide](docs/PROMPTING-GUIDE.md) - Advanced prompting examples
+- [Tools Reference](docs/TOOLS-REFERENCE.md) - Complete tools documentation
+- [Development](docs/DEVELOPMENT.md) - Contributing and development setup
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+## Backlog
+
+See [backlog/backlog.md](backlog/backlog.md) for planned features and ideas.
+
+## License
 
 GPL-3.0
 
-## ⭐ Star History
+---
 
-<a href="https://www.star-history.com/#Pimzino/spec-workflow-mcp&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Pimzino/spec-workflow-mcp&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Pimzino/spec-workflow-mcp&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Pimzino/spec-workflow-mcp&type=Date" />
- </picture>
-</a>
+*Forked from [Pimzino/spec-workflow-mcp](https://github.com/Pimzino/spec-workflow-mcp)*

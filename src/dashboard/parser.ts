@@ -1,8 +1,10 @@
 import { readFile, readdir, access, stat } from 'fs/promises';
 import { join } from 'path';
 import { PathUtils } from '../core/path-utils.js';
-import { SpecData, SteeringStatus, TaskInfo } from '../types.js';
+import { SpecData, SteeringStatus, SteeringDocumentInfo, TaskInfo } from '../types.js';
 import { parseTaskProgress } from '../core/task-parser.js';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
+import { ArchetypeDefinition } from '../archetypes/types.js';
 
 export interface ParsedSpec extends SpecData {
   displayName: string;
@@ -230,43 +232,121 @@ export class SpecParser {
   }
 
 
-  async getProjectSteeringStatus(): Promise<SteeringStatus> {
-    const status: SteeringStatus = {
-      exists: false,
-      documents: {
-        product: false,
-        tech: false,
-        structure: false
+  async getProjectSteeringStatus(archetypeName?: string): Promise<SteeringStatus> {
+    // Get archetype definition if specified
+    let archetype: ArchetypeDefinition | null = null;
+    if (archetypeName) {
+      const result = await archetypeRegistry.get(archetypeName);
+      archetype = result ?? null;
+    }
+
+    const documents: Record<string, boolean> = {};
+    const documentList: SteeringDocumentInfo[] = [];
+
+    // Helper to check if a file exists
+    const fileExists = async (filename: string): Promise<boolean> => {
+      try {
+        await access(join(this.steeringPath, filename));
+        return true;
+      } catch {
+        return false;
       }
     };
 
+    // Helper to get file mod time
+    const getModTime = async (filename: string): Promise<string | undefined> => {
+      try {
+        const stats = await stat(join(this.steeringPath, filename));
+        return stats.mtime.toISOString();
+      } catch {
+        return undefined;
+      }
+    };
+
+    // Helper to capitalize display name
+    const getDisplayName = (name: string): string => {
+      const displayNames: Record<string, string> = {
+        product: 'Product', tech: 'Technical', structure: 'Structure',
+        architecture: 'Architecture', conventions: 'Conventions', documentation: 'Documentation',
+        api: 'API', ux: 'UX', deployment: 'Deployment', legacy: 'Legacy',
+        migration: 'Migration', compatibility: 'Compatibility', thesis: 'Thesis',
+        methodology: 'Methodology', literature: 'Literature', evidence: 'Evidence', publication: 'Publication'
+      };
+      return displayNames[name] || name.charAt(0).toUpperCase() + name.slice(1);
+    };
+
+    let dirExists = false;
+    let lastModified: string | undefined;
+
     try {
       await access(this.steeringPath);
-      status.exists = true;
-
-      // Check each steering document
-      try {
-        await access(join(this.steeringPath, 'product.md'));
-        status.documents.product = true;
-      } catch {}
-
-      try {
-        await access(join(this.steeringPath, 'tech.md'));
-        status.documents.tech = true;
-      } catch {}
-
-      try {
-        await access(join(this.steeringPath, 'structure.md'));
-        status.documents.structure = true;
-      } catch {}
-
-      // Get last modified time for steering directory
+      dirExists = true;
       const steeringStats = await stat(this.steeringPath);
-      status.lastModified = steeringStats.mtime.toISOString();
-
+      lastModified = steeringStats.mtime.toISOString();
     } catch {}
 
-    return status;
+    if (archetype) {
+      // Use archetype-specific steering documents
+      const { required, optional, custom } = archetype.steering;
+
+      // Add required standard docs
+      for (const docName of required) {
+        const exists = await fileExists(`${docName}.md`);
+        documents[docName] = exists;
+        documentList.push({
+          name: docName,
+          displayName: getDisplayName(docName),
+          exists,
+          lastModified: exists ? await getModTime(`${docName}.md`) : undefined
+        });
+      }
+
+      // Add optional standard docs
+      for (const docName of optional) {
+        const exists = await fileExists(`${docName}.md`);
+        documents[docName] = exists;
+        documentList.push({
+          name: docName,
+          displayName: getDisplayName(docName),
+          exists,
+          lastModified: exists ? await getModTime(`${docName}.md`) : undefined
+        });
+      }
+
+      // Add custom steering docs
+      for (const customDoc of custom) {
+        const exists = await fileExists(`${customDoc.name}.md`);
+        documents[customDoc.name] = exists;
+        documentList.push({
+          name: customDoc.name,
+          displayName: getDisplayName(customDoc.name),
+          exists,
+          lastModified: exists ? await getModTime(`${customDoc.name}.md`) : undefined,
+          requiresPlanning: customDoc.requiresPlanning,
+          planningContext: customDoc.planningContext
+        });
+      }
+    } else {
+      // Default: use standard steering documents
+      documents.product = await fileExists('product.md');
+      documents.tech = await fileExists('tech.md');
+      documents.structure = await fileExists('structure.md');
+
+      documentList.push(
+        { name: 'product', displayName: 'Product', exists: documents.product, lastModified: documents.product ? await getModTime('product.md') : undefined },
+        { name: 'tech', displayName: 'Technical', exists: documents.tech, lastModified: documents.tech ? await getModTime('tech.md') : undefined },
+        { name: 'structure', displayName: 'Structure', exists: documents.structure, lastModified: documents.structure ? await getModTime('structure.md') : undefined }
+      );
+    }
+
+    return {
+      exists: dirExists,
+      documents,
+      documentList,
+      archetype: archetype?.name,
+      archetypeDisplayName: archetype?.displayName,
+      lastModified
+    };
   }
 
 

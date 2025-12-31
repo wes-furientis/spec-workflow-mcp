@@ -282,6 +282,34 @@ flowchart TD
    - Edit tasks.md: Change \`[-]\` to \`[x]\` when completed and logged
 4. Continue until all tasks show \`[x]\`
 
+## Claude Code Planning Integration
+
+Before implementing complex features, consider using Claude Code's planning mode (\`EnterPlanMode\`) for better outcomes:
+
+**When to Use Planning Mode**:
+- **Greenfield projects**: Always recommended - plan architecture before writing code
+- **Complex features**: Multi-file changes, new subsystems, architectural decisions
+- **Unfamiliar codebases**: Explore and understand before implementing
+- **Brownfield projects**: Plan migration strategies and backward compatibility
+
+**Planning Mode Benefits**:
+- Explore codebase thoroughly before committing to an approach
+- Get user approval on implementation strategy
+- Read steering docs (\`.spec-workflow/steering/\`) for project context
+- Design with full architectural awareness
+
+**Workflow Integration**:
+1. After spec approval (Phase 3 complete), consider \`EnterPlanMode\` before implementation
+2. In planning mode, read steering docs for project constraints and patterns
+3. Design implementation approach aligned with project archetype
+4. Exit planning mode and proceed with implementation (Phase 4)
+
+**Steering Docs to Read During Planning**:
+- \`product.md\` - Product vision and constraints
+- \`tech.md\` - Technology decisions and rationale
+- \`structure.md\` - Codebase organization
+- Archetype-specific docs (architecture.md, conventions.md, api.md, etc.)
+
 ## Workflow Rules
 
 - Create documents directly at specified file paths
@@ -297,6 +325,7 @@ flowchart TD
 - CRITICAL: Verbal approval is NEVER accepted - dashboard or VS Code extension only
 - NEVER proceed on user saying "approved" - check system status only
 - Steering docs are optional - only create when explicitly requested
+- Consider using Claude Code's EnterPlanMode before complex implementations
 
 ## File Structure
 \`\`\`
@@ -396,5 +425,60 @@ function getArchetypeGuidanceSection(archetype: ArchetypeDefinition): string {
     }
   }
 
+  // Add planning mode recommendations based on archetype
+  lines.push('');
+  lines.push('**Planning Mode Recommendations**:');
+
+  const planningRecommendations = getPlanningRecommendations(archetype);
+  for (const rec of planningRecommendations) {
+    lines.push(`- ${rec}`);
+  }
+
   return lines.join('\n');
+}
+
+/**
+ * Get planning mode recommendations based on archetype
+ */
+function getPlanningRecommendations(archetype: ArchetypeDefinition): string[] {
+  const recommendations: string[] = [];
+
+  switch (archetype.name) {
+    case 'greenfield':
+      recommendations.push('**Strongly recommended**: Use EnterPlanMode before any implementation');
+      recommendations.push('Plan architecture decisions before writing code');
+      recommendations.push('Read architecture.md and conventions.md during planning');
+      recommendations.push('Design documentation structure early (documentation.md)');
+      break;
+    case 'brownfield':
+      recommendations.push('**Recommended**: Use EnterPlanMode for migration planning');
+      recommendations.push('Read legacy.md to understand existing patterns');
+      recommendations.push('Plan backward compatibility strategy (migration.md)');
+      recommendations.push('Explore existing code thoroughly before changes');
+      break;
+    case 'web-app':
+      recommendations.push('**Recommended**: Use EnterPlanMode for new features');
+      recommendations.push('Read ux.md for design system constraints');
+      recommendations.push('Plan API changes with api.md context');
+      recommendations.push('Consider deployment implications (deployment.md)');
+      break;
+    case 'code-library':
+      recommendations.push('**Recommended**: Use EnterPlanMode for public API changes');
+      recommendations.push('Read api.md for versioning and breaking change policies');
+      recommendations.push('Check compatibility.md before adding dependencies');
+      recommendations.push('Plan documentation updates alongside code');
+      break;
+    case 'research-paper':
+      recommendations.push('**Optional**: Use EnterPlanMode for methodology design');
+      recommendations.push('Read thesis.md to ensure alignment with research questions');
+      recommendations.push('Plan evidence collection strategy (evidence.md)');
+      recommendations.push('Consider publication requirements during planning');
+      break;
+    default:
+      recommendations.push('Use EnterPlanMode for complex multi-file changes');
+      recommendations.push('Read steering docs for project context during planning');
+      recommendations.push('Get user approval on implementation approach');
+  }
+
+  return recommendations;
 }

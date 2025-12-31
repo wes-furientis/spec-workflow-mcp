@@ -443,11 +443,13 @@ export class MultiProjectDashboardServer {
         return reply.code(404).send({ error: 'Project not found' });
       }
 
-      const steeringStatus = await project.parser.getProjectSteeringStatus();
+      // Pass archetype to get archetype-specific steering status
+      const steeringStatus = await project.parser.getProjectSteeringStatus(project.archetype);
       return {
         projectId,
         projectName: project.projectName,
         projectPath: project.originalProjectPath,  // Return original path for display
+        archetype: project.archetype,
         steering: steeringStatus,
         version: this.packageVersion
       };

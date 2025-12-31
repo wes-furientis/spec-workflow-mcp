@@ -20,6 +20,8 @@ type SteeringDocument = {
   exists: boolean;
   lastModified?: string;
   content?: string;
+  requiresPlanning?: boolean;
+  planningContext?: string[];
 };
 
 function SteeringModal({ document, isOpen, onClose }: { document: SteeringDocument | null; isOpen: boolean; onClose: () => void }) {
@@ -221,8 +223,15 @@ function SteeringDocumentRow({ document, onOpenModal }: { document: SteeringDocu
             </svg>
           </div>
           <div className="ml-4">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {document.displayName}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {document.displayName}
+              </span>
+              {document.requiresPlanning && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" title="Requires planning mode">
+                  ⚠️ Planning
+                </span>
+              )}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {document.name}.md
@@ -259,7 +268,8 @@ function Content() {
 
   useEffect(() => { reloadAll(); }, [reloadAll]);
 
-  const documents: SteeringDocument[] = [
+  // Use documentList from API if available, otherwise fall back to legacy format
+  const documents: SteeringDocument[] = steeringDocuments?.documentList || [
     {
       name: 'product',
       displayName: 'Product',
@@ -280,12 +290,22 @@ function Content() {
     }
   ];
 
+  // Get archetype info for display
+  const archetypeName = steeringDocuments?.archetypeDisplayName || steeringDocuments?.archetype;
+
   return (
     <div className="grid gap-4">
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{t('steeringPage.header.title')}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{t('steeringPage.header.title')}</h2>
+              {archetypeName && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  {archetypeName}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {t('steeringPage.header.subtitle')}
             </p>
@@ -340,9 +360,16 @@ function Content() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base md:text-lg font-medium text-gray-900 dark:text-white truncate">
-                        {doc.displayName}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base md:text-lg font-medium text-gray-900 dark:text-white truncate">
+                          {doc.displayName}
+                        </h3>
+                        {doc.requiresPlanning && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
                       <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         doc.exists
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'

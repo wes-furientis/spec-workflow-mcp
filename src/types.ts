@@ -88,13 +88,21 @@ export interface PhaseStatus {
 }
 
 
+export interface SteeringDocumentInfo {
+  name: string;
+  displayName: string;
+  exists: boolean;
+  lastModified?: string;
+  requiresPlanning?: boolean;
+  planningContext?: string[];
+}
+
 export interface SteeringStatus {
   exists: boolean;
-  documents: {
-    product: boolean;
-    tech: boolean;
-    structure: boolean;
-  };
+  documents: Record<string, boolean>;      // Dynamic document names (product, tech, structure, or archetype-specific)
+  documentList?: SteeringDocumentInfo[];   // Detailed document info for frontend
+  archetype?: string;                      // The archetype name
+  archetypeDisplayName?: string;           // Human-readable archetype name
   lastModified?: string;
 }
 
