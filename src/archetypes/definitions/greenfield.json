@@ -22,7 +22,8 @@
         "name": "conventions",
         "templateFile": "conventions.md",
         "description": "Coding standards including naming conventions, file organization, error handling patterns, and formatting rules",
-        "requiresPlanning": false
+        "requiresPlanning": true,
+        "planningContext": ["tech", "structure"]
       },
       {
         "name": "documentation",
