@@ -298,7 +298,28 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Priority**: Medium (affects usability)
 - **Added**: 2025-12-30
 
-### 23. Resume Workflow Tool with State Tracking
+### 23. Fix Approval Revision Comments Not Being Saved
+- **Description**: When requesting revisions on an approval, the revision comment is not saved to the log
+- **Rationale**: Revision feedback is critical context for the agent to address issues. If comments aren't persisted, agent doesn't know what to fix.
+- **Symptoms observed**:
+  - Agent submitted Tasks as "Updated Tasks" (generic title)
+  - User requested revisions with comments
+  - Comments not visible in approval log/history
+- **Issues to investigate**:
+  1. Are revision comments being passed to `updateApproval()`?
+  2. Are comments stored in the approval JSON?
+  3. Is the dashboard UI displaying stored comments?
+  4. Is the agent reading revision feedback when resuming?
+- **Related**: Approval titles should be more specific than "Updated Tasks"
+- **Files to investigate**:
+  - `src/dashboard/approval-storage.ts` - updateApproval(), revisionHistory
+  - `src/tools/approvals.ts` - how revisions are handled
+  - Dashboard approval UI components
+- **Effort**: Medium
+- **Priority**: High (breaks revision workflow)
+- **Added**: 2025-12-30
+
+### 24. Resume Workflow Tool with State Tracking
 - **Description**: Add `resume-workflow` tool and explicit state file (`.spec-workflow/state.json`) to enable picking up interrupted work and enforce spec completion before implementation.
 - **Rationale**: When starting a new conversation, Claude doesn't know what phase you're in, what was approved, or what to do next. This causes wasted effort redoing work or skipping steps. Also need to prevent implementation on unapproved specs.
 - **Potential scope**:
