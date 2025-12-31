@@ -102,7 +102,7 @@ export function ChangelogModal({
             </div>
           ) : content ? (
             <div className="prose dark:prose-invert max-w-none">
-              <MDXEditorWrapper content={content} mode="view" enableMermaid={true} />
+              <MDXEditorWrapper content={content} mode="view" enableMermaid={true} height="auto" />
             </div>
           ) : (
             <div className="text-gray-500 dark:text-gray-400 text-center">

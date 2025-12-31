@@ -1,5 +1,8 @@
 # Architecture
 
+> **This document owns**: System design, component architecture, data flow, design patterns, ADRs, and cross-cutting concerns (error handling, logging, security patterns).
+> **Related**: [tech.md](./tech.md) for technology choices, [structure.md](./structure.md) for code organization, [conventions.md](./conventions.md) for coding style.
+
 ## Overview
 [High-level description of the system architecture. What does this system do and how is it organized?]
 
@@ -57,6 +60,9 @@ sequenceDiagram
 ```
 
 ### Data Models
+
+> **See**: [structure.md](./structure.md) for file/module organization of data models. This section covers data relationships and schema design.
+
 [Key data structures and their relationships]
 
 ## Design Patterns
@@ -91,6 +97,8 @@ sequenceDiagram
 
 ## Cross-Cutting Concerns
 
+> **Note**: This section defines architectural patterns for cross-cutting concerns. See [conventions.md](./conventions.md) for coding style (how to format error messages, log statements).
+
 ### Error Handling
 [How errors are handled, propagated, and reported across the system]
 
@@ -98,6 +106,9 @@ sequenceDiagram
 [Logging strategy, log levels, structured logging, metrics, tracing]
 
 ### Security
+
+> **See**: [tech.md](./tech.md) for security requirements and compliance standards. This section covers security implementation patterns.
+
 [Authentication, authorization, data protection, secure communication]
 
 ### Configuration

@@ -13,6 +13,7 @@ import {
   importPlanTool, importPlanHandler
 } from './planning-tools.js';
 import { resumeWorkflowTool, resumeWorkflowHandler } from './resume-workflow.js';
+import { archetypeTransitionTool, archetypeTransitionHandler } from './archetype-transition.js';
 import { ToolContext, ToolResponse, MCPToolResponse, toMCPResponse } from '../types.js';
 
 export function registerTools(): Tool[] {
@@ -30,7 +31,9 @@ export function registerTools(): Tool[] {
     exportPlanTool,
     importPlanTool,
     // Workflow state tools
-    resumeWorkflowTool
+    resumeWorkflowTool,
+    // Archetype lifecycle tools
+    archetypeTransitionTool
   ];
 }
 
@@ -76,6 +79,9 @@ export async function handleToolCall(name: string, args: any, context: ToolConte
         break;
       case 'resume-workflow':
         response = await resumeWorkflowHandler(args, context);
+        break;
+      case 'archetype-transition':
+        response = await archetypeTransitionHandler(args, context);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

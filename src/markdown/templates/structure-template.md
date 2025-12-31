@@ -1,5 +1,8 @@
 # Project Structure
 
+> **This document owns**: Directory organization, file naming, module boundaries, and code organization principles.
+> **Related**: [conventions.md](./conventions.md) for coding style, [tech.md](./tech.md) for build tools.
+
 ## Directory Organization
 
 ```
@@ -139,7 +142,9 @@ src/
 - Can be disabled without affecting core functionality
 
 ## Documentation Standards
-- All public APIs must have documentation
-- Complex logic should include inline comments
+
+> **See**: [documentation.md](./documentation.md) for complete documentation strategy. This section covers documentation location only.
+
 - README files for major modules
-- Follow language-specific documentation conventions
+- Documentation co-located with code where possible
+- See documentation.md for format and content guidelines

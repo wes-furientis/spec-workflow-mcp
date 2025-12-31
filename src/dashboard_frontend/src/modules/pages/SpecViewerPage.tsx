@@ -117,7 +117,7 @@ function Content() {
           </div>
         ) : current ? (
           viewMode === 'rendered' ? (
-            <MDXEditorWrapper content={current.content} mode="view" enableMermaid={true} />
+            <MDXEditorWrapper content={current.content} mode="view" enableMermaid={true} height="auto" />
           ) : (
             renderSourceView(current.content)
           )

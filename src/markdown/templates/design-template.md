@@ -1,5 +1,8 @@
 # Design Document
 
+> **This document owns**: Feature-specific design decisions, component interfaces, data models for this feature, and testing strategy.
+> **Related**: [architecture.md](./architecture.md) for system-wide patterns, [requirements.md](./requirements.md) for what to build.
+
 ## Overview
 
 [High-level description of the feature and its place in the overall system]

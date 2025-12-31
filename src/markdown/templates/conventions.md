@@ -5,6 +5,8 @@
 
 ## Naming Conventions
 
+> **Note**: For file and directory naming, see [structure.md](./structure.md). This section covers code-level naming only.
+
 ### General Principles
 - [e.g., Clarity over brevity - names should be self-documenting]
 - [e.g., Consistency across the codebase]
@@ -36,33 +38,19 @@
 | Enums | [e.g., PascalCase] | `UserRole`, `ConnectionState` |
 
 ### Files & Directories
+
+> **See**: [structure.md](./structure.md) for complete file/directory organization. Below are style conventions only.
+
 | Type | Convention | Example |
 |------|------------|---------|
 | Source files | [e.g., kebab-case or match class name] | `user-service.ts`, `UserService.ts` |
 | Test files | [e.g., .test or .spec suffix] | `user-service.test.ts` |
 | Config files | [e.g., lowercase with dots] | `tsconfig.json`, `.eslintrc` |
-| Directories | [e.g., kebab-case] | `user-management/`, `api-clients/` |
 
-## File Organization
+## File Contents Order
 
-### Project Structure
-```
-project-root/
-├── src/                    # Source code
-│   ├── components/         # [Purpose]
-│   ├── services/          # [Purpose]
-│   ├── utils/             # [Purpose]
-│   ├── types/             # [Purpose]
-│   └── index.ts           # Entry point
-├── tests/                  # Test files
-│   ├── unit/              # Unit tests
-│   └── integration/       # Integration tests
-├── docs/                   # Documentation
-├── scripts/               # Build/utility scripts
-└── config/                # Configuration files
-```
+> **See**: [structure.md](./structure.md) for project-level organization. This section covers within-file ordering only.
 
-### File Contents Order
 [Define the expected order of elements within a file]
 
 1. Imports (external, then internal, alphabetized)
@@ -70,11 +58,6 @@ project-root/
 3. Main class/function/component
 4. Helper functions
 5. Exports
-
-### Module Boundaries
-- [Rule about what can import what]
-- [Circular dependency policy]
-- [Public API vs internal implementation]
 
 ## Code Style
 
@@ -104,6 +87,8 @@ project-root/
 
 ## Error Handling
 
+> **See**: [architecture.md](./architecture.md) for error handling patterns and strategies. This section covers coding style for error handling only.
+
 ### General Approach
 [e.g., Fail fast, exceptions for exceptional cases, Result types for expected failures]
 
@@ -125,6 +110,8 @@ project-root/
 ```
 
 ## Testing Conventions
+
+> **See**: [tech.md](./tech.md) for testing framework and tools. This section covers how to write tests.
 
 ### Test Organization
 - [e.g., Tests mirror source structure]
@@ -149,6 +136,8 @@ project-root/
 - [e.g., Factory functions for test data]
 
 ## Git Conventions
+
+> **See**: [tech.md](./tech.md) for branching strategy and VCS tooling. This section covers commit style and PR conventions.
 
 ### Branch Naming
 | Type | Pattern | Example |
@@ -193,6 +182,8 @@ project-root/
 - [e.g., Specific linter rules]
 
 ## Tools & Enforcement
+
+> **See**: [tech.md](./tech.md) for complete tooling setup. This section references tool configurations.
 
 ### Linting
 - **Tool**: [e.g., ESLint, Pylint, golangci-lint]

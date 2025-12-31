@@ -29,7 +29,7 @@ import {
 import '@mdxeditor/editor/style.css';
 import { useTranslation } from 'react-i18next';
 import { useMDXEditorTheme } from './hooks/useMDXEditorTheme';
-import { MermaidRenderer, isMermaidCode, mermaidCodeBlockDescriptor } from './plugins';
+import { MermaidRenderer, isMermaidCode, mermaidCodeBlockDescriptor, transformAlerts } from './plugins';
 import type { MDXEditorWrapperProps, EditorMode } from './types';
 import './MDXEditorWrapper.css';
 
@@ -512,13 +512,16 @@ export function MDXEditorWrapper({
       );
     }
 
+    // Transform GitHub-style alerts for view mode (#14)
+    const transformedContent = useMemo(() => transformAlerts(content), [content]);
+
     return (
       <div className={`mdx-editor-wrapper view-mode ${isDarkMode ? 'dark-theme' : ''} ${className}`} style={heightStyle}>
         <MDXEditorErrorBoundary content={content} className="view-mode-content">
           <MDXEditor
             key={content} // Force re-render when content changes to fix stale state
             ref={editorRef}
-            markdown={content}
+            markdown={transformedContent}
             plugins={plugins}
             readOnly={true}
             suppressHtmlProcessing={true}

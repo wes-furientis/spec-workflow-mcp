@@ -1,5 +1,8 @@
 # Requirements Document
 
+> **This document owns**: User stories, acceptance criteria, and non-functional requirements for this feature/spec.
+> **Related**: [product.md](./product.md) for product vision, [design.md](./design.md) for how to implement.
+
 ## Introduction
 
 [Provide a brief overview of the feature, its purpose, and its value to users]

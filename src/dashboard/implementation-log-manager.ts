@@ -8,13 +8,32 @@ import { randomUUID } from 'crypto';
  * Each implementation log entry is stored as an individual markdown file
  * in the spec's "Implementation Logs" directory
  */
+/**
+ * Configuration for log management (#24)
+ */
+interface LogManagementConfig {
+  maxRecentEntries: number;  // Max entries to keep in active logs (default: 50)
+  archiveAfterDays: number;  // Archive logs older than N days (default: 30)
+  maxArchiveEntries: number; // Max entries in archive before summarization (default: 200)
+}
+
+const DEFAULT_LOG_CONFIG: LogManagementConfig = {
+  maxRecentEntries: 50,
+  archiveAfterDays: 30,
+  maxArchiveEntries: 200
+};
+
 export class ImplementationLogManager {
   private specPath: string;
   private logsDir: string;
+  private archiveDir: string;
+  private config: LogManagementConfig;
 
-  constructor(specPath: string) {
+  constructor(specPath: string, config: Partial<LogManagementConfig> = {}) {
     this.specPath = specPath;
     this.logsDir = join(specPath, 'Implementation Logs');
+    this.archiveDir = join(specPath, 'Implementation Logs', '.archive');
+    this.config = { ...DEFAULT_LOG_CONFIG, ...config };
   }
 
   /**
@@ -638,5 +657,216 @@ export class ImplementationLogManager {
    */
   getLogPath(): string {
     return this.logsDir;
+  }
+
+  // ==========================================================================
+  // Log Management Methods (#24 - Prevent Unbounded Growth)
+  // ==========================================================================
+
+  /**
+   * Ensure archive directory exists
+   */
+  private async ensureArchiveDir(): Promise<void> {
+    try {
+      await fs.mkdir(this.archiveDir, { recursive: true });
+    } catch {
+      // Directory might already exist
+    }
+  }
+
+  /**
+   * Archive old log entries (move to .archive subdirectory)
+   * Called automatically when adding new entries if thresholds exceeded
+   */
+  async archiveOldLogs(): Promise<{ archivedCount: number; archivedFiles: string[] }> {
+    await this.ensureLogsDir();
+    await this.ensureArchiveDir();
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.config.archiveAfterDays);
+
+    const files = await fs.readdir(this.logsDir);
+    const mdFiles = files.filter(f => f.endsWith('.md') && !f.startsWith('.'));
+
+    const archivedFiles: string[] = [];
+
+    for (const file of mdFiles) {
+      const filePath = join(this.logsDir, file);
+      const content = await fs.readFile(filePath, 'utf-8');
+      const entry = this.parseMarkdownContent(content);
+
+      if (entry && new Date(entry.timestamp) < cutoffDate) {
+        // Move to archive
+        const archivePath = join(this.archiveDir, file);
+        await fs.rename(filePath, archivePath);
+        archivedFiles.push(file);
+      }
+    }
+
+    return { archivedCount: archivedFiles.length, archivedFiles };
+  }
+
+  /**
+   * Get a summary of logs without full content (for context efficiency)
+   * Returns count, date range, and brief summaries
+   */
+  async getLogSummary(): Promise<{
+    totalEntries: number;
+    recentEntries: number;
+    archivedEntries: number;
+    dateRange: { oldest?: string; newest?: string };
+    taskCoverage: { taskId: string; entryCount: number }[];
+    recentSummaries: { taskId: string; summary: string; timestamp: string }[];
+  }> {
+    const recentLogs = await this.loadLog();
+    const archivedCount = await this.getArchivedCount();
+
+    // Get date range
+    const timestamps = recentLogs.entries.map(e => new Date(e.timestamp).getTime());
+    const oldest = timestamps.length > 0 ? new Date(Math.min(...timestamps)).toISOString() : undefined;
+    const newest = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : undefined;
+
+    // Get task coverage
+    const taskCounts = new Map<string, number>();
+    recentLogs.entries.forEach(e => {
+      taskCounts.set(e.taskId, (taskCounts.get(e.taskId) || 0) + 1);
+    });
+    const taskCoverage = Array.from(taskCounts.entries())
+      .map(([taskId, entryCount]) => ({ taskId, entryCount }))
+      .sort((a, b) => b.entryCount - a.entryCount);
+
+    // Get recent summaries (last 10)
+    const recentSummaries = recentLogs.entries
+      .slice(0, 10)
+      .map(e => ({
+        taskId: e.taskId,
+        summary: e.summary.slice(0, 100) + (e.summary.length > 100 ? '...' : ''),
+        timestamp: e.timestamp
+      }));
+
+    return {
+      totalEntries: recentLogs.entries.length + archivedCount,
+      recentEntries: recentLogs.entries.length,
+      archivedEntries: archivedCount,
+      dateRange: { oldest, newest },
+      taskCoverage,
+      recentSummaries
+    };
+  }
+
+  /**
+   * Get count of archived entries
+   */
+  private async getArchivedCount(): Promise<number> {
+    try {
+      const files = await fs.readdir(this.archiveDir);
+      return files.filter(f => f.endsWith('.md')).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Get recent logs only (limited to maxRecentEntries)
+   * Use this instead of getAllLogs for context efficiency
+   */
+  async getRecentLogs(limit?: number): Promise<ImplementationLogEntry[]> {
+    const log = await this.loadLog();
+    const maxEntries = limit || this.config.maxRecentEntries;
+    return log.entries.slice(0, maxEntries);
+  }
+
+  /**
+   * Get logs with pagination for large datasets
+   */
+  async getLogsPaginated(page: number = 1, pageSize: number = 20): Promise<{
+    entries: ImplementationLogEntry[];
+    totalPages: number;
+    totalEntries: number;
+    currentPage: number;
+    hasMore: boolean;
+  }> {
+    const log = await this.loadLog();
+    const totalEntries = log.entries.length;
+    const totalPages = Math.ceil(totalEntries / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const entries = log.entries.slice(startIndex, startIndex + pageSize);
+
+    return {
+      entries,
+      totalPages,
+      totalEntries,
+      currentPage: page,
+      hasMore: page < totalPages
+    };
+  }
+
+  /**
+   * Auto-manage logs: archive old entries if limits exceeded
+   * Called after adding new entries
+   */
+  async autoManageLogs(): Promise<{ action: string; details?: any }> {
+    const log = await this.loadLog();
+
+    // Check if we need to archive
+    if (log.entries.length > this.config.maxRecentEntries * 1.5) {
+      const archiveResult = await this.archiveOldLogs();
+      if (archiveResult.archivedCount > 0) {
+        return {
+          action: 'archived',
+          details: archiveResult
+        };
+      }
+    }
+
+    return { action: 'none' };
+  }
+
+  /**
+   * Generate a condensed summary of archived logs
+   * Useful for including high-level context without full details
+   */
+  async generateArchiveSummary(): Promise<string> {
+    try {
+      const files = await fs.readdir(this.archiveDir);
+      const mdFiles = files.filter(f => f.endsWith('.md'));
+
+      if (mdFiles.length === 0) {
+        return 'No archived logs.';
+      }
+
+      const taskSummaries = new Map<string, { count: number; lastDate: string; summaries: string[] }>();
+
+      for (const file of mdFiles) {
+        const content = await fs.readFile(join(this.archiveDir, file), 'utf-8');
+        const entry = this.parseMarkdownContent(content);
+
+        if (entry) {
+          const existing = taskSummaries.get(entry.taskId) || { count: 0, lastDate: '', summaries: [] };
+          existing.count++;
+          if (!existing.lastDate || entry.timestamp > existing.lastDate) {
+            existing.lastDate = entry.timestamp;
+          }
+          if (existing.summaries.length < 3) {
+            existing.summaries.push(entry.summary.slice(0, 50));
+          }
+          taskSummaries.set(entry.taskId, existing);
+        }
+      }
+
+      let summary = `## Archived Implementation Logs\n\n`;
+      summary += `Total archived entries: ${mdFiles.length}\n\n`;
+
+      taskSummaries.forEach((data, taskId) => {
+        summary += `### Task ${taskId}\n`;
+        summary += `- Entries: ${data.count}\n`;
+        summary += `- Last activity: ${data.lastDate.split('T')[0]}\n`;
+        summary += `- Work included: ${data.summaries.join('; ')}\n\n`;
+      });
+
+      return summary;
+    } catch {
+      return 'No archived logs available.';
+    }
   }
 }

@@ -377,16 +377,30 @@ export async function logImplementationHandler(
 
     const createdEntry = await logManager.addLogEntry(logEntry);
 
+    // Auto-manage logs to prevent unbounded growth (#24)
+    const managementResult = await logManager.autoManageLogs();
+
     // Get task stats
     const taskStats = await logManager.getTaskStats(taskId);
 
+    // Get log summary for context efficiency
+    const logSummary = await logManager.getLogSummary();
+
     return {
       success: true,
-      message: `Implementation logged for task '${taskId}'`,
+      message: `Implementation logged for task '${taskId}'` +
+        (managementResult.action === 'archived'
+          ? ` (${managementResult.details?.archivedCount} old entries archived)`
+          : ''),
       data: {
         entryId: createdEntry.id,
         entry: createdEntry,
         taskStats,
+        logSummary: {
+          totalEntries: logSummary.totalEntries,
+          recentEntries: logSummary.recentEntries,
+          archivedEntries: logSummary.archivedEntries
+        },
         dashboardUrl: `${context.dashboardUrl}/logs?spec=${encodeURIComponent(specName)}&task=${taskId}`
       },
       nextSteps: [

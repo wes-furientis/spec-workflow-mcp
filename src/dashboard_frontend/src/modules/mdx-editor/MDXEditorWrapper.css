@@ -796,3 +796,122 @@ html.dark .mdxeditor-source-editor .cm-activeLineGutter {
 html.dark .mdxeditor-source-editor .cm-selectionBackground {
   background-color: rgba(59, 130, 246, 0.3) !important;
 }
+/* =============================================================================
+ * GitHub-style Alert Blocks (#14)
+ * Supports: [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]
+ * ============================================================================= */
+
+/* Base alert blockquote styling */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child) {
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-left-width: 4px;
+  border-left-style: solid;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* Note alert - blue */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("ℹ️")),
+.mdxeditor blockquote p:first-child strong:first-child:has(+ :contains("Note")) {
+  border-left-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Tip alert - green */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("💡")) {
+  border-left-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+/* Important alert - purple */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("❗")) {
+  border-left-color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+/* Warning alert - yellow/amber */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("⚠️")) {
+  border-left-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Caution alert - red */
+.mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("🔴")) {
+  border-left-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Alternative matching using HTML comments (more reliable) */
+.mdxeditor blockquote:has(> p:nth-child(2):contains("alert-note")) {
+  border-left-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.mdxeditor blockquote:has(> p:nth-child(2):contains("alert-tip")) {
+  border-left-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.mdxeditor blockquote:has(> p:nth-child(2):contains("alert-important")) {
+  border-left-color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+.mdxeditor blockquote:has(> p:nth-child(2):contains("alert-warning")) {
+  border-left-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.mdxeditor blockquote:has(> p:nth-child(2):contains("alert-caution")) {
+  border-left-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Alert title styling */
+.mdxeditor blockquote > p:first-child > strong:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+/* Dark mode adjustments for alerts */
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child) {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("ℹ️")),
+.dark .mdxeditor blockquote:has(> p:nth-child(2):contains("alert-note")) {
+  border-left-color: #60a5fa;
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("💡")),
+.dark .mdxeditor blockquote:has(> p:nth-child(2):contains("alert-tip")) {
+  border-left-color: #34d399;
+  background-color: rgba(16, 185, 129, 0.15);
+}
+
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("❗")),
+.dark .mdxeditor blockquote:has(> p:nth-child(2):contains("alert-important")) {
+  border-left-color: #a78bfa;
+  background-color: rgba(139, 92, 246, 0.15);
+}
+
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("⚠️")),
+.dark .mdxeditor blockquote:has(> p:nth-child(2):contains("alert-warning")) {
+  border-left-color: #fbbf24;
+  background-color: rgba(245, 158, 11, 0.15);
+}
+
+.dark .mdxeditor blockquote:has(> p:first-child > strong:first-child:contains("🔴")),
+.dark .mdxeditor blockquote:has(> p:nth-child(2):contains("alert-caution")) {
+  border-left-color: #f87171;
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Hide the HTML comment markers used for styling */
+.mdxeditor blockquote p:empty,
+.mdxeditor blockquote p:has(> :only-child):has(> .html-comment) {
+  display: none;
+}

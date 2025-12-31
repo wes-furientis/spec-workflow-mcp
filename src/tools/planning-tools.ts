@@ -13,6 +13,92 @@ import { ApprovalStorage, ApprovalRequest } from '../dashboard/approval-storage.
 import { PathUtils } from '../core/path-utils.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+/**
+ * Branch guidance types for #12
+ */
+type BranchGuidanceType = 'greenfield-ish' | 'brownfield' | 'minimal' | 'unknown';
+
+interface BranchInfo {
+  name: string | null;
+  guidanceType: BranchGuidanceType;
+  reason: string;
+}
+
+/**
+ * Detect current git branch and determine guidance type
+ * - main/master/release/* = brownfield (follow existing patterns)
+ * - feature/* = greenfield-ish (can establish new patterns for this feature)
+ * - hotfix/* = minimal (minimal changes only)
+ */
+async function detectBranchGuidance(projectPath: string): Promise<BranchInfo> {
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+      cwd: projectPath,
+      timeout: 5000
+    });
+    const branchName = stdout.trim();
+
+    // Determine guidance type based on branch pattern
+    if (/^(main|master)$/.test(branchName)) {
+      return {
+        name: branchName,
+        guidanceType: 'brownfield',
+        reason: 'On main branch - follow established patterns strictly'
+      };
+    }
+
+    if (/^release[\/\-]/.test(branchName)) {
+      return {
+        name: branchName,
+        guidanceType: 'brownfield',
+        reason: 'On release branch - stability paramount, follow patterns'
+      };
+    }
+
+    if (/^hotfix[\/\-]/.test(branchName)) {
+      return {
+        name: branchName,
+        guidanceType: 'minimal',
+        reason: 'On hotfix branch - minimal changes only, surgical fixes'
+      };
+    }
+
+    if (/^feature[\/\-]/.test(branchName)) {
+      return {
+        name: branchName,
+        guidanceType: 'greenfield-ish',
+        reason: 'On feature branch - can establish new patterns for this feature'
+      };
+    }
+
+    if (/^(develop|dev)$/.test(branchName)) {
+      return {
+        name: branchName,
+        guidanceType: 'greenfield-ish',
+        reason: 'On develop branch - more flexibility for new patterns'
+      };
+    }
+
+    // Default for unknown branch patterns
+    return {
+      name: branchName,
+      guidanceType: 'unknown',
+      reason: `On '${branchName}' branch - unable to determine guidance type`
+    };
+  } catch {
+    // Not a git repo or git not available
+    return {
+      name: null,
+      guidanceType: 'unknown',
+      reason: 'Not in a git repository or git unavailable'
+    };
+  }
+}
 
 /**
  * Get all steering approvals (any status) for a project
@@ -346,6 +432,33 @@ export async function suggestPlanModeHandler(args: any, context: ToolContext): P
     }
   }
 
+  // Factor in branch context (#12 - Branch-Aware Guidance)
+  const branchInfo = await detectBranchGuidance(projectPath);
+  let branchGuidanceNote: string | undefined;
+
+  if (branchInfo.guidanceType !== 'unknown') {
+    complexityFactors.push(branchInfo.reason);
+
+    switch (branchInfo.guidanceType) {
+      case 'minimal':
+        // Hotfix branches should discourage extensive planning - just fix it
+        complexityScore = Math.max(0, complexityScore - 2);
+        branchGuidanceNote = 'Hotfix branch detected - prefer minimal, surgical fixes over extensive changes';
+        break;
+      case 'brownfield':
+        // Main/release branches should emphasize following patterns
+        complexityScore += 1;
+        branchGuidanceNote = 'Stable branch - strictly follow established patterns and conventions';
+        break;
+      case 'greenfield-ish':
+        // Feature branches can establish new patterns
+        if (archetypeDefinition?.name === 'brownfield') {
+          branchGuidanceNote = 'Feature branch in brownfield project - can establish new patterns for this feature, but integrate with existing architecture';
+        }
+        break;
+    }
+  }
+
   // Determine recommendation
   let recommendation: 'strongly-recommended' | 'recommended' | 'optional' | 'not-needed';
   let confidence: 'high' | 'medium' | 'low';
@@ -385,6 +498,12 @@ export async function suggestPlanModeHandler(args: any, context: ToolContext): P
       complexityFactors,
       archetypeRecommendation,
       archetype: archetypeDefinition?.name || 'generic',
+      // Branch-aware guidance (#12)
+      branch: branchInfo.name ? {
+        name: branchInfo.name,
+        guidanceType: branchInfo.guidanceType,
+        note: branchGuidanceNote
+      } : undefined,
       contextFilesToRead,
       reasoning: generatePlanningReasoning(recommendation, complexityFactors, archetypeDefinition)
     },

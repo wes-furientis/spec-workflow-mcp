@@ -195,9 +195,17 @@ export class ApprovalStorage extends EventEmitter {
     metadata?: Record<string, any>
   ): Promise<string> {
     const id = this.generateId();
+
+    // Normalize title to filename for consistency (#26)
+    // Agents often provide creative titles; we prefer predictable ones for scanning
+    const fileBasename = basename(filePath).replace(/\.md$/, '');
+    const normalizedTitle = title && title.toLowerCase() === fileBasename.toLowerCase()
+      ? title  // Keep if matches filename
+      : fileBasename;  // Default to filename
+
     const approval: ApprovalRequest = {
       id,
-      title,
+      title: normalizedTitle,
       filePath,
       type,
       status: 'pending',

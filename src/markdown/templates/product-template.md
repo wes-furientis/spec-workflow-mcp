@@ -1,5 +1,8 @@
 # Product Overview
 
+> **This document owns**: Product vision, target users, key features, business objectives, and success metrics.
+> **Related**: [requirements.md](./requirements.md) for detailed acceptance criteria.
+
 ## Product Purpose
 [Describe the core purpose of this product/project. What problem does it solve?]
 

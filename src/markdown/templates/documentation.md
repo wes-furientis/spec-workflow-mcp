@@ -1,5 +1,8 @@
 # Documentation Strategy
 
+> **This document owns**: Documentation locations, format standards, visual documentation, validation cases, and doc generation tools.
+> **Related**: [conventions.md](./conventions.md) for code comment style, [structure.md](./structure.md) for where docs live in the project.
+
 ## Overview
 [Describe the documentation philosophy for this project. What role does documentation play in the project's success? Who are the audiences?]
 
@@ -30,11 +33,20 @@
 
 ## Format Standards
 
+### Markup Language
+| Option | When to Use | Tools |
+|--------|-------------|-------|
+| Markdown | Simple docs, READMEs | Any editor |
+| MyST Markdown | Sphinx with extended features | myst_parser |
+| reStructuredText | Traditional Sphinx | Sphinx core |
+| Docstrings | In-code API docs | autodoc, pdoc |
+
 ### Markdown Conventions
 - Use ATX-style headers (`#`, `##`, `###`)
 - Code blocks with language identifiers
 - Tables for structured data
 - Relative links for internal references
+- Footnotes for definitions: `[^term]: Definition here`
 
 ### Code Examples
 [Standards for code examples in documentation]
@@ -68,12 +80,25 @@ $$
 $$
 ```
 
-#### Derivation Structure
+#### Derivation Structure (for technical/scientific projects)
 1. **Statement**: What we're deriving
 2. **Assumptions**: Starting conditions
 3. **Steps**: Numbered derivation steps with explanations
 4. **Result**: Final equation with interpretation
 5. **Validation**: How to verify correctness
+
+#### Custom Math Macros (Sphinx/MathJax)
+For projects with repeated mathematical notation, define macros in `conf.py`:
+```python
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "RR": r"\mathbb{R}",
+            "boldx": r"\mathbf{x}",
+        }
+    }
+}
+```
 
 #### Example Derivation Format
 ```markdown
@@ -196,53 +221,49 @@ def create_interactive_figure():
 ## Validation Cases
 
 ### Purpose
-Validation cases demonstrate that the implementation is correct by comparing against known solutions, analytical results, or reference implementations.
+Validation cases demonstrate that the software works as intended. This goes beyond unit tests to provide evidence that the system correctly solves the problems it claims to solve.
+
+### Types of Validation
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Analytical** | Compare against mathematical/closed-form solutions | Physics formulas, algorithm proofs |
+| **Reference** | Compare against published results or standards | RFC compliance, benchmark datasets |
+| **Cross-implementation** | Compare multiple backends produce same results | CPU vs GPU, different libraries |
+| **Golden file** | Compare output against known-good snapshots | Compiler output, report generation |
+| **Integration** | Verify correct behavior with real external systems | API responses, database queries |
+| **Behavioral** | Verify user-facing workflows produce expected outcomes | E2E tests, user acceptance tests |
 
 ### Validation Case Structure
 ```markdown
 ## Validation Case: [Name]
 
-### Description
-[What is being validated and why it matters]
+### What This Validates
+[The specific claim or behavior being verified]
 
-### Reference
-[Source of expected results: analytical solution, published paper, reference implementation]
+### Evidence Source
+[Where expected results come from - could be any of:]
+- Analytical solution or derivation
+- Published paper, RFC, or specification
+- Reference implementation
+- Real-world test data
+- Expert review
 
 ### Setup
-- Input parameters: [List all inputs]
-- Configuration: [Any special settings]
-- Environment: [Dependencies, versions]
+- Inputs: [Data, configuration, environment]
+- Preconditions: [Required state]
 
-### Expected Results
-[Precise expected outputs with tolerances]
+### Expected vs Actual
+| Aspect | Expected | Actual | Pass? |
+|--------|----------|--------|-------|
+| [Output/behavior] | [Value] | [Measured] | ✓/✗ |
 
-| Parameter | Expected | Tolerance |
-|-----------|----------|-----------|
-| Result A  | 1.234    | ±0.001    |
-| Result B  | 5.678    | ±0.01     |
-
-### Actual Results
-[To be filled in when validation is run]
-
-### Pass/Fail Criteria
-[How to determine if validation passes]
-
-### Code
-\`\`\`python
-def run_validation_case():
-    # Setup
-    params = {...}
-
-    # Execute
-    result = compute(params)
-
-    # Validate
-    expected = 1.234
-    tolerance = 0.001
-    assert abs(result - expected) < tolerance, f"Failed: {result} vs {expected}"
-
-    return result
-\`\`\`
+### Pass Criteria
+[How to determine success - could be:]
+- Exact match
+- Within tolerance (±X%)
+- Behavioral equivalence
+- No error/exception
 ```
 
 ### Validation Categories
@@ -250,8 +271,9 @@ def run_validation_case():
 |----------|---------|-----------|
 | Unit Validation | Individual function correctness | Every build |
 | Integration Validation | Component interaction | Daily/PR |
-| Reference Validation | Against published results | Release |
+| Reference Validation | Against authoritative sources | Release |
 | Regression Validation | No degradation from changes | Every PR |
+| Acceptance Validation | User-facing requirements met | Release |
 
 ## Documentation Generation
 

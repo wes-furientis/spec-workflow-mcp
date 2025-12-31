@@ -1,5 +1,8 @@
 # Technology Stack
 
+> **This document owns**: Technology choices, dependencies, build tools, development environment, deployment, and technical requirements.
+> **Related**: [architecture.md](./architecture.md) for system design, [conventions.md](./conventions.md) for coding style, [structure.md](./structure.md) for project layout.
+
 ## Project Type
 [Describe what kind of project this is: web application, CLI tool, desktop application, mobile app, library, API service, embedded system, game, etc.]
 
@@ -42,12 +45,18 @@
 - **Development workflow**: [e.g., hot reload, watch mode, REPL]
 
 ### Code Quality Tools
+
+> **See**: [conventions.md](./conventions.md) for how to use these tools (style rules, test patterns). This section covers tool selection only.
+
 - **Static Analysis**: [Tools for code quality and correctness]
 - **Formatting**: [Code style enforcement tools]
 - **Testing Framework**: [Unit, integration, and/or end-to-end testing tools]
 - **Documentation**: [Documentation generation tools]
 
 ### Version Control & Collaboration
+
+> **See**: [conventions.md](./conventions.md) for commit message format and PR conventions. This section covers VCS tooling and branching strategy.
+
 - **VCS**: [e.g., Git, Mercurial, SVN]
 - **Branching Strategy**: [e.g., Git Flow, GitHub Flow, trunk-based]
 - **Code Review Process**: [How code reviews are conducted]
@@ -75,6 +84,9 @@
 - **Standards Compliance**: [Industry standards, protocols, specifications]
 
 ### Security & Compliance
+
+> **See**: [architecture.md](./architecture.md) for security implementation patterns. This section defines security requirements.
+
 - **Security Requirements**: [Authentication, encryption, data protection]
 - **Compliance Standards**: [GDPR, HIPAA, SOC2, etc. if applicable]
 - **Threat Model**: [Key security considerations]

@@ -344,7 +344,7 @@ describe('Steering Document Planning Check', () => {
       }, context);
 
       expect(result.nextSteps).toBeDefined();
-      expect(result.nextSteps.some((s: string) => s.includes('EnterPlanMode'))).toBe(true);
+      expect(result.nextSteps!.some((s: string) => s.includes('EnterPlanMode'))).toBe(true);
     });
 
     it('should include get-steering-template in nextSteps after planning is done', async () => {
@@ -358,7 +358,7 @@ describe('Steering Document Planning Check', () => {
       }, context);
 
       expect(result.nextSteps).toBeDefined();
-      expect(result.nextSteps.some((s: string) => s.includes('get-steering-template'))).toBe(true);
+      expect(result.nextSteps!.some((s: string) => s.includes('get-steering-template'))).toBe(true);
     });
   });
 });
