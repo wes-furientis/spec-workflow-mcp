@@ -183,14 +183,30 @@ Items to consider for future specs. These are captured here to avoid scope creep
 - **Effort**: High
 - **Added**: 2025-12-30
 
-### 17. Remove Template Overlap: structure.md vs conventions.md
-- **Description**: Refactor conventions.md template to remove sections that overlap with structure.md
-- **Rationale**: The conventions template has "Naming Conventions > Files & Directories" and "File Organization" sections that duplicate content covered in structure.md. Users shouldn't define the same thing twice.
+### 17. Comprehensive Template Overlap Refactor
+- **Description**: Refactor all steering templates to eliminate duplicate sections and establish clear ownership
+- **Rationale**: Multiple templates cover the same topics, forcing users to repeat themselves or create inconsistencies. Each topic should have ONE authoritative location with other templates referencing it.
+- **Overlaps identified**:
+  | Topic | Currently In | Move To |
+  |-------|-------------|---------|
+  | Naming conventions (files/code) | structure, conventions | structure only |
+  | File/directory organization | structure, conventions | structure only |
+  | Error handling patterns | architecture, conventions, design | architecture (patterns), conventions (style only) |
+  | Testing conventions | conventions, design, tech | conventions (how to test), tech (tools only) |
+  | Security requirements | architecture, tech, requirements | tech only (others reference) |
+  | Code quality tools | tech, conventions | tech only (conventions references) |
+  | Module boundaries | structure, conventions | structure only |
+  | Documentation standards | structure, documentation | documentation only |
+  | Git workflow (branching) | tech, conventions | tech (branching), conventions (commits/PRs) |
+  | Data models | architecture, design, tech | architecture only |
+  | Performance/scalability | tech, architecture, requirements | tech (requirements), architecture (design) |
+  | Code modularity principles | requirements, structure, design | structure only (others reference) |
 - **Potential scope**:
-  - Remove "Files & Directories" from Naming Conventions section
-  - Remove or replace "File Organization" section with reference to structure.md
-  - Clear separation: structure = where things go, conventions = how to write code
-- **Effort**: Low
+  - Remove duplicate sections from each template
+  - Add "See X.md" references where topics moved
+  - Update section-by-section planning to detect when a section should reference another doc
+  - Clear ownership: each topic has ONE template that owns it
+- **Effort**: Medium
 - **Added**: 2025-12-30
 
 ### 18. Resume Workflow Tool with State Tracking
