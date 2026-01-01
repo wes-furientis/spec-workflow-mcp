@@ -112,4 +112,22 @@ Historical items before 2025-12-31 have date-only timestamps.
 - **Effort**: High
 - **Added**: 2025-12-30
 
+### 27. Custom Archetype Creation
+- **Description**: Allow users to create custom archetypes beyond the built-in ones (greenfield, brownfield, web-app, code-library, research-paper, generic).
+- **Rationale**: Different organizations and project types have unique documentation needs, steering doc requirements, and workflow patterns. Custom archetypes let users codify their specific practices.
+- **Potential scope**:
+  - Dashboard UI for creating/editing archetypes
+  - Define required vs optional steering docs
+  - Custom steering doc templates (beyond the standard set)
+  - Archetype-specific planning guidance and prompts
+  - Export/import archetypes for sharing across projects/teams
+  - Inherit from existing archetypes and override specific settings
+  - Store custom archetypes in `.spec-workflow/archetypes/` or user-level config
+- **Examples**:
+  - "data-pipeline" archetype with data-flow.md, schema.md, ETL-patterns.md
+  - "mobile-app" archetype with platform-specific docs, release-process.md
+  - "microservice" archetype with API-contracts.md, deployment.md, observability.md
+- **Effort**: Medium-High
+- **Added**: 2025-12-31
+
 
