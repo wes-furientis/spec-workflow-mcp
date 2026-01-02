@@ -92,15 +92,54 @@ export interface ArchetypeInfo {
   displayName: string;
   /** User-facing description */
   description: string;
+  /** Whether this is a custom (project-level) archetype */
+  isCustom?: boolean;
+}
+
+/**
+ * Custom steering configuration for custom archetypes.
+ * Supports partial definition and removal of inherited docs via "-docname" syntax.
+ */
+export interface CustomSteeringConfig {
+  /** Required steering documents to add (or "-name" to remove from inherited) */
+  required?: (string | SteeringDocDef)[];
+  /** Optional steering documents to add (or "-name" to remove from inherited) */
+  optional?: (string | SteeringDocDef)[];
+  /** Custom steering documents specific to this archetype */
+  custom?: SteeringDocDef[];
+}
+
+/**
+ * Custom archetype definition for project-level archetypes.
+ * Supports inheritance from built-in archetypes via 'extends'.
+ */
+export interface CustomArchetypeDefinition {
+  /** Unique archetype identifier (required) */
+  name: string;
+  /** Display name for UI (required) */
+  displayName: string;
+  /** User-facing description */
+  description?: string;
+  /** Base archetype to inherit from (e.g., "brownfield", "greenfield") */
+  extends?: string;
+  /** Override templates configuration */
+  templates?: Partial<ArchetypeTemplates>;
+  /** Override steering configuration (merged with base) */
+  steering?: CustomSteeringConfig;
+  /** Override guidance configuration (merged with base) */
+  guidance?: Partial<ArchetypeGuidance>;
+  /** Override README structure */
+  readme?: ArchetypeReadme;
 }
 
 /**
  * Convert full ArchetypeDefinition to abbreviated ArchetypeInfo
  */
-export function toArchetypeInfo(def: ArchetypeDefinition): ArchetypeInfo {
+export function toArchetypeInfo(def: ArchetypeDefinition, isCustom = false): ArchetypeInfo {
   return {
     name: def.name,
     displayName: def.displayName,
     description: def.description,
+    isCustom,
   };
 }

@@ -45,10 +45,11 @@ function Content() {
   const [archetypeUpdating, setArchetypeUpdating] = useState(false);
   const archetypesCacheRef = useRef<Archetype[] | null>(null);
 
-  // Load archetypes (with caching)
+  // Load archetypes (with caching, includes custom archetypes when project is selected)
   const loadArchetypes = useCallback(async () => {
-    // Return cached archetypes if available
-    if (archetypesCacheRef.current) {
+    // Return cached archetypes if available and project hasn't changed
+    const cacheKey = currentProjectId || '_global';
+    if (archetypesCacheRef.current && (archetypesCacheRef.current as any)._cacheKey === cacheKey) {
       setArchetypes(archetypesCacheRef.current);
       setArchetypesLoading(false);
       return;
@@ -56,11 +57,22 @@ function Content() {
 
     try {
       setArchetypesLoading(true);
-      const response = await fetch('/api/archetypes');
+
+      // Use project-specific endpoint if project is selected (includes custom archetypes)
+      const url = currentProjectId
+        ? `/api/projects/${encodeURIComponent(currentProjectId)}/all-archetypes`
+        : '/api/archetypes';
+
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to load archetypes: ${response.status}`);
       }
-      const data = await response.json();
+      const result = await response.json();
+
+      // Handle both response formats
+      const data = result.archetypes || result;
+      (data as any)._cacheKey = cacheKey;
+
       archetypesCacheRef.current = data;
       setArchetypes(data);
       setArchetypesError(null);
@@ -69,9 +81,9 @@ function Content() {
     } finally {
       setArchetypesLoading(false);
     }
-  }, []);
+  }, [currentProjectId]);
 
-  // Load archetypes on mount
+  // Load archetypes on mount and when project changes
   useEffect(() => {
     loadArchetypes();
   }, [loadArchetypes]);

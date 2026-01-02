@@ -1,8 +1,19 @@
 import {
   ArchetypeDefinition,
+  ArchetypeInfo,
   SteeringDocDef,
+  CustomArchetypeDefinition,
 } from './types.js';
 import { loadArchetype, listArchetypes } from './archetype-loader.js';
+import {
+  loadCustomArchetype,
+  loadCustomArchetypeRaw,
+  listCustomArchetypes,
+  customArchetypeExists,
+  saveCustomArchetype,
+  deleteCustomArchetype,
+  getAllArchetypes,
+} from './custom-archetype-loader.js';
 
 /**
  * Singleton registry for archetype definitions.
@@ -164,6 +175,133 @@ class ArchetypeRegistry {
     this.archetypes.clear();
     this.initialized = false;
     this.initError = null;
+  }
+
+  // ========================================
+  // Project-aware methods (custom archetypes)
+  // ========================================
+
+  /**
+   * Get an archetype by name, checking project-level custom archetypes first.
+   * @param name - The archetype name
+   * @param projectPath - The project path to check for custom archetypes
+   * @returns Object with archetype definition and isCustom flag
+   */
+  public async getWithProject(
+    name: string,
+    projectPath: string
+  ): Promise<{ archetype: ArchetypeDefinition; isCustom: boolean } | undefined> {
+    // Check custom archetypes first
+    if (await customArchetypeExists(projectPath, name)) {
+      try {
+        const archetype = await loadCustomArchetype(projectPath, name);
+        return { archetype, isCustom: true };
+      } catch (error: any) {
+        console.warn(`Warning: Failed to load custom archetype '${name}': ${error.message}`);
+      }
+    }
+
+    // Fall back to built-in
+    const archetype = await this.get(name);
+    if (archetype) {
+      return { archetype, isCustom: false };
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get all archetypes (built-in + custom) for a project.
+   * @param projectPath - The project path
+   * @returns Array of archetype info with isCustom flag
+   */
+  public async getAllWithProject(projectPath: string): Promise<ArchetypeInfo[]> {
+    return getAllArchetypes(projectPath);
+  }
+
+  /**
+   * List custom archetypes for a project.
+   * @param projectPath - The project path
+   * @returns Array of custom archetype info
+   */
+  public async getCustomArchetypes(projectPath: string): Promise<ArchetypeInfo[]> {
+    return listCustomArchetypes(projectPath);
+  }
+
+  /**
+   * Check if an archetype is custom (project-level).
+   * @param name - The archetype name
+   * @param projectPath - The project path
+   * @returns True if the archetype is custom
+   */
+  public async isCustomArchetype(name: string, projectPath: string): Promise<boolean> {
+    return customArchetypeExists(projectPath, name);
+  }
+
+  /**
+   * Get raw (unresolved) custom archetype definition.
+   * @param name - The archetype name
+   * @param projectPath - The project path
+   * @returns The raw custom archetype definition
+   */
+  public async getCustomArchetypeRaw(
+    name: string,
+    projectPath: string
+  ): Promise<CustomArchetypeDefinition> {
+    return loadCustomArchetypeRaw(projectPath, name);
+  }
+
+  /**
+   * Save a custom archetype.
+   * @param projectPath - The project path
+   * @param definition - The custom archetype definition
+   */
+  public async saveCustomArchetype(
+    projectPath: string,
+    definition: CustomArchetypeDefinition
+  ): Promise<void> {
+    return saveCustomArchetype(projectPath, definition);
+  }
+
+  /**
+   * Delete a custom archetype.
+   * @param projectPath - The project path
+   * @param name - The archetype name
+   */
+  public async deleteCustomArchetype(projectPath: string, name: string): Promise<void> {
+    return deleteCustomArchetype(projectPath, name);
+  }
+
+  /**
+   * Get steering docs for an archetype, checking custom archetypes first.
+   * @param archetype - The archetype name
+   * @param projectPath - The project path
+   * @returns Steering configuration
+   */
+  public async getSteeringDocsForProject(
+    archetype: string,
+    projectPath: string
+  ): Promise<{
+    required: string[];
+    optional: string[];
+    custom: SteeringDocDef[];
+  }> {
+    const result = await this.getWithProject(archetype, projectPath);
+    const definition = result?.archetype;
+
+    if (!definition) {
+      return {
+        required: ['product', 'tech', 'structure'],
+        optional: [],
+        custom: [],
+      };
+    }
+
+    return {
+      required: [...definition.steering.required],
+      optional: [...definition.steering.optional],
+      custom: [...definition.steering.custom],
+    };
   }
 }
 

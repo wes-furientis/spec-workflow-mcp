@@ -5,6 +5,7 @@ export interface Archetype {
   name: string;
   displayName: string;
   description: string;
+  isCustom?: boolean;
 }
 
 interface ArchetypeSelectorProps {

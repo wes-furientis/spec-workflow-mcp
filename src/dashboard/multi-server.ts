@@ -1244,6 +1244,223 @@ export class MultiProjectDashboardServer {
         return reply.code(500).send({ error: `Failed to set archetype: ${error.message}` });
       }
     });
+
+    // =====================
+    // Custom Archetype API endpoints
+    // =====================
+
+    // GET /api/projects/:projectId/custom-archetypes - List all custom archetypes
+    this.app.get('/api/projects/:projectId/custom-archetypes', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      try {
+        const archetypes = await archetypeRegistry.getCustomArchetypes(project.projectPath);
+        return { archetypes };
+      } catch (error: any) {
+        return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // GET /api/projects/:projectId/all-archetypes - List all archetypes (built-in + custom)
+    this.app.get('/api/projects/:projectId/all-archetypes', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      try {
+        const archetypes = await archetypeRegistry.getAllWithProject(project.projectPath);
+        return { archetypes };
+      } catch (error: any) {
+        return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // GET /api/projects/:projectId/custom-archetypes/:name - Get single custom archetype
+    this.app.get('/api/projects/:projectId/custom-archetypes/:name', async (request, reply) => {
+      const { projectId, name } = request.params as { projectId: string; name: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      try {
+        const isCustom = await archetypeRegistry.isCustomArchetype(name, project.projectPath);
+        if (!isCustom) {
+          return reply.code(404).send({ error: `Custom archetype '${name}' not found` });
+        }
+
+        const raw = await archetypeRegistry.getCustomArchetypeRaw(name, project.projectPath);
+        const result = await archetypeRegistry.getWithProject(name, project.projectPath);
+
+        return {
+          archetype: raw,
+          resolved: result?.archetype
+        };
+      } catch (error: any) {
+        return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // POST /api/projects/:projectId/custom-archetypes - Create custom archetype
+    this.app.post('/api/projects/:projectId/custom-archetypes', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      const definition = request.body as any;
+
+      if (!definition || !definition.name || !definition.displayName) {
+        return reply.code(400).send({
+          error: 'name and displayName are required'
+        });
+      }
+
+      try {
+        // Check if archetype already exists
+        const exists = await archetypeRegistry.isCustomArchetype(definition.name, project.projectPath);
+        if (exists) {
+          return reply.code(409).send({
+            error: `Custom archetype '${definition.name}' already exists`
+          });
+        }
+
+        await archetypeRegistry.saveCustomArchetype(project.projectPath, definition);
+
+        // Broadcast update
+        this.broadcastToProject(projectId, {
+          type: 'custom-archetype-created',
+          projectId,
+          data: { name: definition.name }
+        });
+
+        return { success: true, archetype: definition };
+      } catch (error: any) {
+        return reply.code(400).send({ error: error.message });
+      }
+    });
+
+    // PUT /api/projects/:projectId/custom-archetypes/:name - Update custom archetype
+    this.app.put('/api/projects/:projectId/custom-archetypes/:name', async (request, reply) => {
+      const { projectId, name } = request.params as { projectId: string; name: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      try {
+        const exists = await archetypeRegistry.isCustomArchetype(name, project.projectPath);
+        if (!exists) {
+          return reply.code(404).send({ error: `Custom archetype '${name}' not found` });
+        }
+
+        const updates = request.body as any;
+
+        // Load existing and merge
+        const existing = await archetypeRegistry.getCustomArchetypeRaw(name, project.projectPath);
+        const updated = { ...existing, ...updates, name }; // Preserve name
+
+        await archetypeRegistry.saveCustomArchetype(project.projectPath, updated);
+
+        // Broadcast update
+        this.broadcastToProject(projectId, {
+          type: 'custom-archetype-updated',
+          projectId,
+          data: { name }
+        });
+
+        return { success: true, archetype: updated };
+      } catch (error: any) {
+        return reply.code(400).send({ error: error.message });
+      }
+    });
+
+    // DELETE /api/projects/:projectId/custom-archetypes/:name - Delete custom archetype
+    this.app.delete('/api/projects/:projectId/custom-archetypes/:name', async (request, reply) => {
+      const { projectId, name } = request.params as { projectId: string; name: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      try {
+        await archetypeRegistry.deleteCustomArchetype(project.projectPath, name);
+
+        // Broadcast update
+        this.broadcastToProject(projectId, {
+          type: 'custom-archetype-deleted',
+          projectId,
+          data: { name }
+        });
+
+        return { success: true };
+      } catch (error: any) {
+        if (error.message.includes('not found')) {
+          return reply.code(404).send({ error: error.message });
+        }
+        return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // POST /api/projects/:projectId/custom-archetypes/validate - Validate archetype JSON
+    this.app.post('/api/projects/:projectId/custom-archetypes/validate', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      const { json } = request.body as { json: string };
+
+      if (!json || typeof json !== 'string') {
+        return reply.code(400).send({ error: 'json field is required' });
+      }
+
+      try {
+        const parsed = JSON.parse(json);
+
+        // Import validation function
+        const { validateCustomArchetype, resolveArchetype, createStandaloneArchetype } = await import('../archetypes/archetype-merger.js');
+        const { listArchetypes } = await import('../archetypes/archetype-loader.js');
+        const { loadArchetype } = await import('../archetypes/archetype-loader.js');
+
+        const builtIns = await listArchetypes();
+        const builtInNames = builtIns.map(a => a.name);
+
+        const errors = validateCustomArchetype(parsed, builtInNames);
+
+        if (errors.length > 0) {
+          return { valid: false, errors };
+        }
+
+        // Try to resolve to check inheritance
+        let resolved;
+        if (parsed.extends) {
+          const base = await loadArchetype(parsed.extends);
+          resolved = resolveArchetype(parsed, base);
+        } else {
+          resolved = createStandaloneArchetype(parsed);
+        }
+
+        return { valid: true, resolved };
+      } catch (error: any) {
+        return { valid: false, errors: [error.message] };
+      }
+    });
   }
 
   private broadcastToAll(message: any) {
