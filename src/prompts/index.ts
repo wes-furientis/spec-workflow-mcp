@@ -10,6 +10,8 @@ import { specStatusPrompt } from './spec-status.js';
 import { injectSpecWorkflowGuidePrompt } from './inject-spec-workflow-guide.js';
 import { injectSteeringGuidePrompt } from './inject-steering-guide.js';
 import { refreshTasksPrompt } from './refresh-tasks.js';
+import { ralphValidatePhasePrompt } from './ralph-validate-phase.js';
+import { ralphBuildSpecPrompt } from './ralph-build-spec.js';
 
 // Registry of all prompts
 const promptDefinitions: PromptDefinition[] = [
@@ -19,7 +21,10 @@ const promptDefinitions: PromptDefinition[] = [
   specStatusPrompt,
   injectSpecWorkflowGuidePrompt,
   injectSteeringGuidePrompt,
-  refreshTasksPrompt
+  refreshTasksPrompt,
+  // Ralph Wiggum autonomous loop prompts
+  ralphValidatePhasePrompt,
+  ralphBuildSpecPrompt
 ];
 
 /**

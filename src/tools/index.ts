@@ -14,6 +14,11 @@ import {
 } from './planning-tools.js';
 import { resumeWorkflowTool, resumeWorkflowHandler } from './resume-workflow.js';
 import { archetypeTransitionTool, archetypeTransitionHandler } from './archetype-transition.js';
+import { manageArchetypeTool, manageArchetypeHandler } from './manage-archetype.js';
+import { validatePhaseTool, validatePhaseHandler } from './validate-phase.js';
+import { buildSpecTool, buildSpecHandler } from './build-spec.js';
+import { implementTaskAutoTool, implementTaskAutoHandler } from './implement-task-auto.js';
+import { verifyImplementationTool, verifyImplementationHandler } from './verify-implementation.js';
 import { ToolContext, ToolResponse, MCPToolResponse, toMCPResponse } from '../types.js';
 
 export function registerTools(): Tool[] {
@@ -33,7 +38,14 @@ export function registerTools(): Tool[] {
     // Workflow state tools
     resumeWorkflowTool,
     // Archetype lifecycle tools
-    archetypeTransitionTool
+    archetypeTransitionTool,
+    manageArchetypeTool,
+    // Validation tools
+    validatePhaseTool,
+    // Build tools (Ralph integration)
+    buildSpecTool,
+    implementTaskAutoTool,
+    verifyImplementationTool
   ];
 }
 
@@ -82,6 +94,23 @@ export async function handleToolCall(name: string, args: any, context: ToolConte
         break;
       case 'archetype-transition':
         response = await archetypeTransitionHandler(args, context);
+        break;
+      case 'manage-archetype':
+        response = await manageArchetypeHandler(args, context);
+        break;
+      // Validation tools
+      case 'validate-phase':
+        response = await validatePhaseHandler(args, context);
+        break;
+      // Build tools (Ralph integration)
+      case 'build-spec':
+        response = await buildSpecHandler(args, context);
+        break;
+      case 'implement-task-auto':
+        response = await implementTaskAutoHandler(args, context);
+        break;
+      case 'verify-implementation':
+        response = await verifyImplementationHandler(args, context);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

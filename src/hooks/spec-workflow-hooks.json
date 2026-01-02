@@ -1,0 +1,26 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "type": "command",
+      "command": "node dist/hooks/load-spec-context.js"
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Edit|Write",
+      "type": "command",
+      "command": "node dist/hooks/validate-edit.js"
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "Edit|Write",
+      "type": "command",
+      "command": "node dist/hooks/track-file-change.js"
+    },
+    {
+      "event": "Stop",
+      "type": "command",
+      "command": "node dist/hooks/enforce-logging.js"
+    }
+  ]
+}

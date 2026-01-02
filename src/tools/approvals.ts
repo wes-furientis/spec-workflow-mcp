@@ -6,6 +6,7 @@ import { validateProjectPath, PathUtils } from '../core/path-utils.js';
 import { readFile } from 'fs/promises';
 import { validateTasksMarkdown, formatValidationErrors } from '../core/task-validator.js';
 import { recordSteeringStatus, recordSpecPhaseStatus, PhaseStatus } from '../core/workflow-state.js';
+import { validatePhase, formatValidationResult } from '../validators/index.js';
 
 /**
  * Update workflow state based on approval status
@@ -113,6 +114,10 @@ CRITICAL: Only provide filePath parameter for requests - the dashboard reads fil
       categoryName: {
         type: 'string',
         description: 'Name of the spec or "steering" for steering documents (required for request)'
+      },
+      skipValidation: {
+        type: 'boolean',
+        description: 'Skip phase validation before approval request (default: false). Use only when validation has already been run separately.'
       }
     },
     required: ['action']
@@ -128,6 +133,7 @@ type RequestApprovalArgs = {
   type: 'document' | 'action';
   category: 'spec' | 'steering';
   categoryName: string;
+  skipValidation?: boolean;
 };
 
 type StatusApprovalArgs = {
@@ -167,6 +173,7 @@ export async function approvalsHandler(
     type?: 'document' | 'action';
     category?: 'spec' | 'steering';
     categoryName?: string;
+    skipValidation?: boolean;
   },
   context: ToolContext
 ): Promise<ToolResponse> {
@@ -246,6 +253,62 @@ async function handleRequestApproval(
 
     const approvalStorage = new ApprovalStorage(translatedPath, validatedProjectPath);
     await approvalStorage.start();
+
+    // Phase validation gate for spec approvals (requirements, design, tasks)
+    if (args.category === 'spec' && !args.skipValidation) {
+      // Extract phase from filePath (e.g., ".spec-workflow/specs/my-feature/requirements.md" -> "requirements")
+      const phaseMatch = args.filePath.match(/specs\/[^/]+\/([^/]+)\.md$/);
+      if (phaseMatch) {
+        const phaseName = phaseMatch[1];
+        if (['requirements', 'design', 'tasks'].includes(phaseName)) {
+          try {
+            const validationResult = await validatePhase(
+              phaseName as 'requirements' | 'design' | 'tasks',
+              {
+                projectPath: validatedProjectPath,
+                specName: args.categoryName
+              }
+            );
+
+            // If validation has errors, block the approval request
+            if (!validationResult.valid) {
+              await approvalStorage.stop();
+
+              const formattedResult = formatValidationResult(validationResult);
+
+              return {
+                success: false,
+                message: `Phase validation failed for ${phaseName}. Fix errors before requesting approval.`,
+                data: {
+                  phase: phaseName,
+                  specName: args.categoryName,
+                  errorCount: validationResult.summary.errors,
+                  warningCount: validationResult.summary.warnings,
+                  totalChecks: validationResult.summary.totalChecks,
+                  passedChecks: validationResult.summary.passedChecks
+                },
+                nextSteps: [
+                  'Fix the validation errors listed below',
+                  'Run validate-spec to see detailed results',
+                  'Re-request approval after fixing errors',
+                  'Use skipValidation:true to bypass (not recommended)',
+                  ...formattedResult
+                ]
+              };
+            }
+
+            // Validation passed (or only warnings) - continue with approval request
+          } catch (validationError) {
+            await approvalStorage.stop();
+            const errorMessage = validationError instanceof Error ? validationError.message : String(validationError);
+            return {
+              success: false,
+              message: `Phase validation failed: ${errorMessage}`
+            };
+          }
+        }
+      }
+    }
 
     // Validate tasks.md format before allowing approval request
     if (args.filePath.endsWith('tasks.md')) {
