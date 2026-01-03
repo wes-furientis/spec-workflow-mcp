@@ -1,491 +1,326 @@
 # Workflow Process Guide
 
-This guide explains the complete spec-driven development workflow and best practices for using Spec Workflow MCP.
+The spec-driven development workflow for Spec Workflow MCP.
 
 ## Overview
 
-The spec-driven workflow follows a structured approach:
-
 ```
-Steering → Specifications → Implementation → Verification
+Archetype Setup → Steering → Requirements → Design → Tasks → Implementation
 ```
 
-Each phase builds on the previous, ensuring systematic and well-documented development.
+Each phase builds on the previous. Documents must be validated and approved before proceeding.
 
-## Phase 1: Project Setup with Steering Documents
+## Phase 0: Project Setup
 
-### Why Steering Documents?
-
-Steering documents provide high-level guidance that keeps your project aligned and consistent. They act as a north star for all development decisions.
-
-### Creating Steering Documents
+### Initialize Workflow
 
 ```
-"Create steering documents for my project"
+initialize-workflow
 ```
 
-This generates three key documents:
-
-#### 1. Product Steering (`steering/product.md`)
-- Product vision and mission
-- Target users and personas
-- Core features and priorities
-- Success metrics and KPIs
-- Non-goals and constraints
-
-#### 2. Technical Steering (`steering/tech.md`)
-- Architecture decisions
-- Technology stack choices
-- Performance requirements
-- Security considerations
-- Scalability approach
-
-#### 3. Structure Steering (`steering/structure.md`)
-- Project organization
-- File and folder conventions
-- Naming standards
-- Module boundaries
-- Documentation structure
-
-### Best Practices for Steering
-
-1. **Create early** - Set up steering before any specs
-2. **Keep updated** - Revise as project evolves
-3. **Reference often** - Use for decision making
-4. **Share widely** - Ensure team alignment
-
-## Phase 2: Specification Creation
-
-### The Three-Document System
-
-Each spec consists of three sequential documents:
-
+Creates `.spec-workflow/` directory structure:
 ```
-Requirements → Design → Tasks
+.spec-workflow/
+├── steering/        # Steering documents
+├── specs/           # Specification documents
+├── templates/       # Document templates
+├── approvals/       # Approval records
+├── archive/         # Archived documents
+└── config.json      # Project configuration
 ```
 
-### Requirements Document
+### Set Archetype
 
-**Purpose**: Define WHAT needs to be built
+Open dashboard → Settings → Select archetype.
 
-**Contents**:
-- Feature overview
+| Archetype | Required Steering Docs |
+|-----------|----------------------|
+| generic | (minimal) |
+| greenfield | product, tech, structure |
+| brownfield | existing-patterns, constraints |
+| code-library | api-design, versioning |
+| research-paper | methodology, literature-review |
+| web-app | user-flows, ui-patterns |
+
+Custom archetypes can define their own steering documents.
+
+## Phase 1: Steering Documents
+
+### Purpose
+
+Steering documents provide project-level guidance that all specifications reference:
+- Project goals and constraints
+- Technical decisions and patterns
+- Structure and conventions
+
+### Creation
+
+Tell Claude about your project and ask for steering documents:
+
+```
+"Here's my project: [description]
+
+Create the steering documents."
+```
+
+Or use the prompt directly:
+```
+create-steering-doc docType:"goals"
+create-steering-doc docType:"approach"
+```
+
+### Review & Approval
+
+1. Review each steering document in dashboard
+2. Add comments/feedback
+3. Approve or request revisions
+4. All steering docs should be approved before creating specs
+
+### No Ralph for Steering
+
+Steering document validation is not yet mature. Create and refine steering documents manually through the approval process.
+
+## Phase 2: Requirements
+
+### Purpose
+
+Define WHAT needs to be built:
 - User stories
-- Functional requirements
-- Non-functional requirements
 - Acceptance criteria
+- Non-functional requirements
 - Constraints and assumptions
 
-**Example Creation**:
+### Creation
+
 ```
-"Create requirements for a user notification system that supports:
-- Email notifications
-- In-app notifications
-- Push notifications
-- User preferences
-- Notification history"
+create-spec specName:"my-feature" documentType:"requirements"
 ```
 
-### Design Document
+### Validation with Ralph
 
-**Purpose**: Define HOW it will be built
+```
+/ralph-wiggum:ralph-loop --max-iterations 10
+```
 
-**Contents**:
-- Technical architecture
-- Component design
+Prompt:
+```
+Validate the requirements phase for spec "my-feature". Call validate-phase with phase:"requirements" and specName:"my-feature". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>REQUIREMENTS_VALIDATED</promise>
+```
+
+### Validation Checks
+
+- Document exists
+- User stories in correct format ("As a [role], I want [X], so that [Y]")
+- Acceptance criteria in testable format (WHEN/THEN)
+- Non-functional requirements defined
+- Coverage of steering document content
+- Requirements are numbered for traceability
+
+### Approval
+
+```
+approvals action:"request" filePath:".spec-workflow/specs/my-feature/requirements.md" category:"spec" categoryName:"my-feature" type:"document" title:"requirements"
+```
+
+Review and approve in dashboard.
+
+### Cleanup
+
+```
+approvals action:"status" approvalId:"[id]"
+approvals action:"delete" approvalId:"[id]"
+```
+
+## Phase 3: Design
+
+### Purpose
+
+Define HOW it will be built:
+- Architecture and components
 - Data models
 - API specifications
 - Integration points
-- Implementation approach
+- Code reuse analysis
 
-**Automatic Generation**: Created after requirements approval
+### Creation
 
-### Tasks Document
+```
+create-spec specName:"my-feature" documentType:"design"
+```
 
-**Purpose**: Define the STEPS to build it
+### Validation with Ralph
 
-**Contents**:
+```
+/ralph-wiggum:ralph-loop --max-iterations 10
+```
+
+Prompt:
+```
+Validate the design phase for spec "my-feature". Call validate-phase with phase:"design" and specName:"my-feature". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>DESIGN_VALIDATED</promise>
+```
+
+### Validation Checks
+
+- Document exists
+- Code reuse analysis present
+- File references point to existing files
+- Requirements coverage (design addresses all requirements)
+- Architecture diagrams included
+- Data models defined
+- Component interfaces specified
+- Steering document alignment
+
+### Approval & Cleanup
+
+Same pattern as requirements.
+
+## Phase 4: Tasks
+
+### Purpose
+
+Define the STEPS to build it:
 - Hierarchical task breakdown
-- Dependencies
-- Effort estimates
 - Implementation order
-- Testing requirements
+- _Prompt guidance for each task
+- _Leverage files to reference
+- _Requirements traceability
 
-**Structure Example**:
-```
-1.0 Database Setup
-  1.1 Create notification tables
-  1.2 Set up indexes
-  1.3 Create migration scripts
-
-2.0 Backend Implementation
-  2.1 Create notification service
-    2.1.1 Email handler
-    2.1.2 Push handler
-  2.2 Create API endpoints
-  2.3 Add authentication
-
-3.0 Frontend Implementation
-  3.1 Create notification components
-  3.2 Integrate with API
-  3.3 Add preference UI
-```
-
-## Phase 3: Review and Approval
-
-### Approval Workflow
-
-1. **Document Creation** - AI generates document
-2. **Review Request** - Approval requested automatically
-3. **User Review** - Review in dashboard/extension
-4. **Decision** - Approve, request changes, or reject
-5. **Revision** (if needed) - AI updates based on feedback
-6. **Final Approval** - Document locked for implementation
-
-### Making Approval Decisions
-
-#### When to Approve
-- Requirements are complete and clear
-- Design solves the stated problem
-- Tasks are logical and comprehensive
-- No major concerns or gaps
-
-#### When to Request Changes
-- Missing important details
-- Unclear specifications
-- Better approach available
-- Needs alignment with standards
-
-#### When to Reject
-- Fundamental misunderstanding
-- Wrong approach entirely
-- Requires complete rethink
-
-### Providing Effective Feedback
-
-Good feedback:
-```
-"The authentication flow should use JWT tokens instead of sessions.
-Add rate limiting to the API endpoints.
-Include error handling for network failures."
-```
-
-Poor feedback:
-```
-"This doesn't look right. Fix it."
-```
-
-## Phase 4: Implementation
-
-### Task Execution Strategy
-
-#### Sequential Implementation
-Best for dependent tasks:
-```
-"Implement task 1.1 from user-auth spec"
-"Now implement task 1.2"
-"Continue with task 1.3"
-```
-
-#### Parallel Implementation
-For independent tasks:
-```
-"Implement all UI tasks from the dashboard spec while I work on the backend"
-```
-
-#### Section-Based Implementation
-For logical groupings:
-```
-"Implement all database tasks from the payment spec"
-```
-
-### Progress Tracking
-
-Monitor implementation through:
-- Dashboard task view
-- Progress bars
-- Status indicators
-- Completion percentages
-
-### Handling Blockers
-
-When blocked:
-1. Document the blocker
-2. Create a sub-task for resolution
-3. Move to parallel tasks if possible
-4. Update task status to "blocked"
-
-## Phase 5: Verification
-
-### Testing Strategy
-
-After implementation:
-
-1. **Unit Testing**
-   ```
-   "Create unit tests for the notification service"
-   ```
-
-2. **Integration Testing**
-   ```
-   "Create integration tests for the API endpoints"
-   ```
-
-3. **End-to-End Testing**
-   ```
-   "Create E2E tests for the complete notification flow"
-   ```
-
-### Documentation Updates
-
-Keep documentation current:
-```
-"Update the API documentation for the new endpoints"
-"Add usage examples to the README"
-```
-
-## File Structure and Organization
-
-### Standard Project Structure
+### Creation
 
 ```
-your-project/
-├── .spec-workflow/
-│   ├── steering/
-│   │   ├── product.md
-│   │   ├── tech.md
-│   │   └── structure.md
-│   ├── specs/
-│   │   ├── user-auth/
-│   │   │   ├── requirements.md
-│   │   │   ├── design.md
-│   │   │   └── tasks.md
-│   │   └── payment-gateway/
-│   │       ├── requirements.md
-│   │       ├── design.md
-│   │       └── tasks.md
-│   └── approval/
-│       └── [approval tracking files]
-├── src/
-│   └── [your implementation]
-└── tests/
-    └── [your tests]
+create-spec specName:"my-feature" documentType:"tasks"
 ```
 
-### Naming Conventions
+### Validation with Ralph
 
-**Spec Names**:
-- Use kebab-case: `user-authentication`
-- Be descriptive: `payment-processing` not `payments`
-- Avoid versions: `user-profile` not `user-profile-v2`
-
-**Document Names**:
-- Always: `requirements.md`, `design.md`, `tasks.md`
-- Consistent across all specs
-
-## Advanced Workflows
-
-### Feature Iterations
-
-For evolving features:
-
-1. Create initial spec
-2. Implement MVP
-3. Create enhancement spec
-4. Reference original spec
-5. Build on existing work
-
-Example:
 ```
-"Create an enhancement spec for user-auth that adds:
-- Social login (Google, Facebook)
-- Biometric authentication
-- Session management improvements"
+/ralph-wiggum:ralph-loop --max-iterations 15
 ```
 
-### Refactoring Workflow
+Prompt:
+```
+Validate the tasks phase for spec "my-feature". Call validate-phase with phase:"tasks" and specName:"my-feature". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>TASKS_VALIDATED</promise>
+```
 
-1. **Document Current State**
-   ```
-   "Create a spec documenting the current authentication system"
-   ```
+### Validation Checks
 
-2. **Design Improvements**
-   ```
-   "Design refactoring to improve authentication performance"
-   ```
+- Document exists
+- Tasks have proper structure
+- _Prompt fields present with Role/Task/Restrictions/Success
+- _Leverage files exist
+- _Requirements map to actual requirements
+- Tasks decompose design completely
 
-3. **Plan Migration**
-   ```
-   "Create migration tasks for the refactoring"
-   ```
+### Approval & Cleanup
 
-4. **Implement Gradually**
-   ```
-   "Implement refactoring tasks with backward compatibility"
-   ```
+Same pattern as requirements.
 
-### Bug Resolution Workflow
+## Phase 5: Implementation
 
-1. **Bug Report**
-   ```
-   "Create bug report for login timeout issue"
-   ```
+### Task Execution
 
-2. **Investigation**
-   ```
-   "Investigate root cause of bug #45"
-   ```
+Use the implement-task prompt for guidance:
 
-3. **Solution Design**
-   ```
-   "Design fix for the timeout issue"
-   ```
+```
+implement-task specName:"my-feature" taskId:"1.2"
+```
 
-4. **Implementation**
-   ```
-   "Implement the bug fix"
-   ```
+### Log Implementation
 
-5. **Verification**
-   ```
-   "Create regression tests for bug #45"
-   ```
+After completing a task:
+
+```
+log-implementation specName:"my-feature" taskId:"1.2" summary:"Created login endpoint" filesChanged:["src/routes/auth.ts"]
+```
+
+### Track Progress
+
+Check status:
+```
+spec-status specName:"my-feature"
+```
+
+## Mid-Workflow Changes
+
+### When Specs Change
+
+If requirements or design change during implementation:
+
+```
+refresh-tasks specName:"my-feature"
+```
+
+This updates tasks.md to align with current specs while preserving completed work.
+
+## File Structure
+
+### Per-Spec Structure
+
+```
+.spec-workflow/specs/my-feature/
+├── requirements.md
+├── design.md
+└── tasks.md
+```
+
+### Steering Structure
+
+```
+.spec-workflow/steering/
+├── goals.md        # (archetype-dependent)
+├── approach.md     # (archetype-dependent)
+├── product.md      # (archetype-dependent)
+├── tech.md         # (archetype-dependent)
+└── ...
+```
 
 ## Best Practices
 
-### 1. Maintain Spec Granularity
+### 1. Set Archetype Before Anything
 
-**Good**: One spec per feature
-- `user-authentication`
-- `payment-processing`
-- `notification-system`
+The archetype determines which steering documents you need. Set it first.
 
-**Poor**: Overly broad specs
-- `backend-system`
-- `all-features`
+### 2. Complete Phases Sequentially
 
-### 2. Sequential Document Creation
+Requirements → Design → Tasks. Each must be approved before the next.
 
-Always follow the order:
-1. Requirements (what)
-2. Design (how)
-3. Tasks (steps)
+### 3. Use Ralph for Validation
 
-Never skip ahead.
+Let Ralph loop fix validation issues automatically rather than fixing them manually.
 
-### 3. Complete Approval Before Implementation
+### 4. Always Set Max Iterations
 
-- ✅ Approve requirements → Create design
-- ✅ Approve design → Create tasks
-- ✅ Review tasks → Start implementation
-- ❌ Skip approval → Implementation issues
+Never run Ralph without `--max-iterations`. Default recommendations:
+- Requirements: 10
+- Design: 10
+- Tasks: 15-20
 
-### 4. Keep Specs Updated
+### 5. Verify Approval Status
 
-When requirements change:
+Don't trust verbal confirmation. Always check:
 ```
-"Update the requirements for user-auth to include SSO support"
+approvals action:"status" approvalId:"[id]"
 ```
 
-### 5. Use Consistent Terminology
+### 6. Clean Up Approvals
 
-Maintain consistency across:
-- Spec names
-- Component names
-- API terminology
-- Database naming
-
-### 6. Archive Completed Specs
-
-Keep workspace clean:
+Delete approval records after approval:
 ```
-"Archive the completed user-auth spec"
+approvals action:"delete" approvalId:"[id]"
 ```
 
-## Common Patterns
+### 7. One Spec at a Time
 
-### MVP to Full Feature
+Complete one spec before starting another. Parallel specs can create confusion.
 
-1. Start with MVP spec
-2. Implement core functionality
-3. Create enhancement specs
-4. Build incrementally
-5. Maintain backward compatibility
+### 8. Use Kebab-Case for Spec Names
 
-### Microservices Development
-
-1. Create service steering document
-2. Define service boundaries
-3. Create spec per service
-4. Define integration points
-5. Implement services independently
-
-### API-First Development
-
-1. Create API spec first
-2. Design contracts
-3. Generate documentation
-4. Implement endpoints
-5. Create client SDKs
-
-## Troubleshooting Workflow Issues
-
-### Specs Getting Too Large
-
-**Solution**: Break into smaller specs
-```
-"Split the e-commerce spec into:
-- product-catalog
-- shopping-cart
-- checkout-process
-- order-management"
-```
-
-### Unclear Requirements
-
-**Solution**: Request clarification
-```
-"The requirements need more detail on:
-- User roles and permissions
-- Error handling scenarios
-- Performance requirements"
-```
-
-### Design Doesn't Match Requirements
-
-**Solution**: Request revision
-```
-"The design doesn't address the multi-tenancy requirement.
-Please revise to include tenant isolation."
-```
-
-## Integration with Development Process
-
-### Git Workflow
-
-1. Create feature branch per spec
-2. Commit after each task completion
-3. Reference spec in commit messages
-4. PR when spec is complete
-
-### CI/CD Integration
-
-- Run tests for completed tasks
-- Validate against requirements
-- Deploy completed features
-- Monitor against success metrics
-
-### Team Collaboration
-
-- Share dashboard URL
-- Assign specs to team members
-- Review each other's specs
-- Coordinate through approvals
+Good: `user-authentication`, `payment-processing`
+Bad: `userAuth`, `PaymentProcessing`
 
 ## Related Documentation
 
-- [User Guide](USER-GUIDE.md) - General usage instructions
-- [Prompting Guide](PROMPTING-GUIDE.md) - Example prompts and patterns
-- [Tools Reference](TOOLS-REFERENCE.md) - Complete tool documentation
-- [Interfaces Guide](INTERFACES.md) - Dashboard and extension details
+- [COMMAND-SEQUENCE.md](COMMAND-SEQUENCE.md) - Complete command sequence
+- [TOOLS-REFERENCE.md](TOOLS-REFERENCE.md) - All tools and prompts
+- [USER-GUIDE.md](USER-GUIDE.md) - Getting started
+- [PROMPTING-GUIDE.md](PROMPTING-GUIDE.md) - Command examples

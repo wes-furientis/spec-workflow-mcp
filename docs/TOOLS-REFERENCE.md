@@ -1,569 +1,481 @@
 # Tools Reference
 
-Complete documentation for all MCP tools provided by Spec Workflow MCP.
+Complete documentation for all MCP tools and prompts provided by Spec Workflow MCP.
 
-## Overview
+## Important: Tools vs Prompts
 
-Spec Workflow MCP provides specialized tools for structured software development. These tools are accessible to AI assistants through the Model Context Protocol.
+Spec Workflow MCP provides two types of MCP resources:
 
-## Tool Categories
+- **Tools**: Called with parameters, return structured data
+- **Prompts**: Generate conversation context for Claude to act on
 
-1. **Workflow Guides** - Documentation and guidance
-2. **Spec Management** - Create and manage specifications
-3. **Context Tools** - Retrieve project information
-4. **Steering Tools** - Project-level guidance
-5. **Approval Tools** - Document approval workflow
+---
 
-## Workflow Guide Tools
+## Tools (18 total)
 
-### spec-workflow-guide
+### Workflow Guidance Tools
 
-**Purpose**: Provides comprehensive guidance for the spec-driven workflow process.
+#### spec-workflow-guide
 
-**Parameters**: None
+Returns comprehensive guidance for the spec-driven workflow.
 
-**Returns**: Markdown guide explaining the complete workflow
+**Parameters**: None required
 
-**Usage Example**:
+**Usage**:
 ```
-"Show me the spec workflow guide"
+spec-workflow-guide
 ```
 
-**Response Contains**:
-- Workflow overview
-- Step-by-step process
-- Best practices
-- Example prompts
+**Returns**: Markdown guide with workflow steps, archetype info, and phase instructions.
 
-### steering-guide
+---
 
-**Purpose**: Guide for creating project steering documents.
+#### steering-guide
 
-**Parameters**: None
+Returns guidance for creating steering documents.
 
-**Returns**: Markdown guide for steering document creation
+**Parameters**: None required
 
-**Usage Example**:
+**Usage**:
 ```
-"Show me how to create steering documents"
+steering-guide
 ```
 
-**Response Contains**:
-- Steering document types
-- Creation process
-- Content guidelines
-- Examples
+**Returns**: Guide for steering document creation based on current archetype.
 
-## Spec Management Tools
+---
 
-### create-spec-doc
+#### get-steering-template
 
-**Purpose**: Creates or updates specification documents (requirements, design, tasks).
+Returns a specific steering document template.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec (kebab-case) |
-| docType | string | Yes | Type: "requirements", "design", or "tasks" |
-| content | string | Yes | Markdown content of the document |
-| revision | boolean | No | Whether this is a revision (default: false) |
+| templateName | string | Yes | Template name (e.g., "product", "tech", "goals") |
 
-**Usage Example**:
-```typescript
-{
-  specName: "user-authentication",
-  docType: "requirements",
-  content: "# User Authentication Requirements\n\n## Overview\n...",
-  revision: false
-}
+**Usage**:
+```
+get-steering-template templateName:"goals"
 ```
 
-**Returns**:
-```typescript
-{
-  success: true,
-  message: "Requirements document created successfully",
-  path: ".spec-workflow/specs/user-authentication/requirements.md",
-  requestedApproval: true
-}
-```
+---
 
-**Notes**:
-- Creates spec directory if it doesn't exist
-- Automatically requests approval for new documents
-- Validates markdown format
-- Preserves existing documents when creating new types
+#### steering-planning-respond
 
-### spec-list
-
-**Purpose**: Lists all specifications with their current status.
-
-**Parameters**: None
-
-**Returns**: Array of spec summaries
-
-**Response Structure**:
-```typescript
-[
-  {
-    name: "user-authentication",
-    status: "in-progress",
-    progress: 45,
-    documents: {
-      requirements: "approved",
-      design: "pending-approval",
-      tasks: "not-created"
-    },
-    taskStats: {
-      total: 15,
-      completed: 7,
-      inProgress: 1,
-      pending: 7
-    }
-  }
-]
-```
-
-**Usage Example**:
-```
-"List all my specs"
-```
-
-### spec-status
-
-**Purpose**: Gets detailed status information for a specific spec.
+Responds to steering document planning questions.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec to check |
+| response | string | Yes | User's response to planning question |
 
-**Returns**: Detailed spec status
+---
 
-**Response Structure**:
-```typescript
-{
-  exists: true,
-  name: "user-authentication",
-  documents: {
-    requirements: {
-      exists: true,
-      approved: true,
-      lastModified: "2024-01-15T10:30:00Z",
-      size: 4523
-    },
-    design: {
-      exists: true,
-      approved: false,
-      pendingApproval: true,
-      lastModified: "2024-01-15T14:20:00Z",
-      size: 6234
-    },
-    tasks: {
-      exists: true,
-      taskCount: 15,
-      completedCount: 7,
-      inProgressCount: 1,
-      progress: 45
-    }
-  },
-  overallProgress: 45,
-  currentPhase: "implementation"
-}
-```
+### Spec Status Tools
 
-**Usage Example**:
-```
-"Show me the status of user-authentication spec"
-```
+#### spec-status
 
-### manage-tasks
-
-**Purpose**: Comprehensive task management including updates, status changes, and progress tracking.
+Gets detailed status for a specification.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | specName | string | Yes | Name of the spec |
-| action | string | Yes | Action: "update", "complete", "list", "progress" |
-| taskId | string | Sometimes | Task ID (required for update/complete) |
-| status | string | No | New status: "pending", "in-progress", "completed" |
-| notes | string | No | Additional notes for the task |
+
+**Usage**:
+```
+spec-status specName:"user-auth"
+```
+
+**Returns**: Document status, task progress, approval states.
+
+---
+
+### Approval Tools
+
+#### approvals
+
+Single tool for all approval operations. Uses `action` parameter to specify operation.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| action | string | Yes | One of: "request", "status", "delete", "list" |
+| filePath | string | For request | Path to document being approved |
+| approvalId | string | For status/delete | ID of existing approval |
+| category | string | For request | Category: "steering" or "spec" |
+| categoryName | string | For request | Spec name or "steering" |
+| type | string | For request | "document" |
+| title | string | For request | Document title |
 
 **Actions**:
 
-1. **Update Task Status**:
-```typescript
-{
-  specName: "user-auth",
-  action: "update",
-  taskId: "1.2.1",
-  status: "in-progress",
-  notes: "Started implementation"
-}
+**Request approval**:
+```
+approvals action:"request" filePath:".spec-workflow/specs/my-feature/requirements.md" category:"spec" categoryName:"my-feature" type:"document" title:"requirements"
 ```
 
-2. **Complete Task**:
-```typescript
-{
-  specName: "user-auth",
-  action: "complete",
-  taskId: "1.2.1"
-}
+**Check status**:
+```
+approvals action:"status" approvalId:"approval_123456"
 ```
 
-3. **List Tasks**:
-```typescript
-{
-  specName: "user-auth",
-  action: "list"
-}
+**Delete approval** (after approved/rejected):
+```
+approvals action:"delete" approvalId:"approval_123456"
 ```
 
-4. **Get Progress**:
-```typescript
-{
-  specName: "user-auth",
-  action: "progress"
-}
+**List all approvals**:
+```
+approvals action:"list"
 ```
 
-**Returns**: Task information or update confirmation
+**CRITICAL**: Verbal approval is NOT accepted. Always check status via this tool.
 
-## Context Tools
+---
 
-### get-template-context
+### Implementation Tools
 
-**Purpose**: Retrieves markdown templates for all document types.
+#### log-implementation
 
-**Parameters**: None
-
-**Returns**: Object containing all templates
-
-**Response Structure**:
-```typescript
-{
-  requirements: "# Requirements Template\n\n## Overview\n...",
-  design: "# Design Template\n\n## Architecture\n...",
-  tasks: "# Tasks Template\n\n## Implementation Tasks\n...",
-  product: "# Product Steering Template\n...",
-  tech: "# Technical Steering Template\n...",
-  structure: "# Structure Steering Template\n..."
-}
-```
-
-**Usage Example**:
-```
-"Get all document templates"
-```
-
-### get-steering-context
-
-**Purpose**: Retrieves project steering documents and guidance.
+Logs implementation details after completing a task.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| docType | string | No | Specific doc: "product", "tech", "structure", or "all" |
+| specName | string | Yes | Spec name |
+| taskId | string | Yes | Task ID (e.g., "1.2.1") |
+| summary | string | Yes | What was implemented |
+| filesChanged | array | No | List of files modified |
+| artifacts | object | No | Additional details |
 
-**Returns**: Steering document content
-
-**Usage Example**:
-```typescript
-{
-  docType: "tech"  // Returns only technical steering
-}
+**Usage**:
+```
+log-implementation specName:"user-auth" taskId:"1.2" summary:"Created login endpoint" filesChanged:["src/routes/auth.ts"]
 ```
 
-**Response Structure**:
-```typescript
-{
-  product: "# Product Steering\n\n## Vision\n...",
-  tech: "# Technical Steering\n\n## Architecture\n...",
-  structure: "# Structure Steering\n\n## Organization\n..."
-}
-```
+---
 
-### get-spec-context
+### Planning Tools
 
-**Purpose**: Retrieves complete context for a specific spec.
+#### get-planning-context
+
+Gets context for Claude Code planning mode integration.
+
+**Parameters**: None required
+
+---
+
+#### suggest-plan-mode
+
+Suggests whether to use planning mode for a task.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec |
-| includeContent | boolean | No | Include document content (default: true) |
+| taskDescription | string | Yes | Description of the task |
 
-**Returns**: Complete spec context
+---
 
-**Response Structure**:
-```typescript
-{
-  name: "user-authentication",
-  exists: true,
-  documents: {
-    requirements: {
-      exists: true,
-      content: "# Requirements\n\n...",
-      approved: true
-    },
-    design: {
-      exists: true,
-      content: "# Design\n\n...",
-      approved: false
-    },
-    tasks: {
-      exists: true,
-      content: "# Tasks\n\n...",
-      stats: {
-        total: 15,
-        completed: 7,
-        progress: 45
-      }
-    }
-  },
-  relatedSpecs: ["user-profile", "session-management"],
-  dependencies: ["database-setup", "auth-library"]
-}
+#### export-plan
+
+Exports a plan to a file.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| planContent | string | Yes | Plan markdown content |
+| filename | string | No | Output filename |
+
+---
+
+#### import-plan
+
+Imports a plan from a file.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| filename | string | Yes | Plan file to import |
+
+---
+
+### Workflow State Tools
+
+#### resume-workflow
+
+Resumes workflow from saved state.
+
+**Parameters**: None required
+
+**Returns**: Current workflow state and next steps.
+
+---
+
+### Archetype Tools
+
+#### archetype-transition
+
+Transitions project to a different archetype.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| targetArchetype | string | Yes | Archetype to transition to |
+| preserveCustom | boolean | No | Keep custom steering docs |
+
+**Built-in archetypes**: generic, greenfield, brownfield, code-library, research-paper, web-app
+
+---
+
+#### manage-archetype
+
+CRUD operations for custom archetypes.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| action | string | Yes | One of: "list", "inspect", "create", "update", "delete", "validate" |
+| name | string | For most | Archetype name |
+| definition | object | For create/update | Archetype definition |
+
+**Usage**:
+```
+manage-archetype action:"list"
+manage-archetype action:"inspect" name:"my-custom-archetype"
 ```
 
-**Usage Example**:
+---
+
+### Validation Tools
+
+#### validate-phase
+
+Validates a spec phase against quality criteria.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| phase | string | Yes | One of: "steering", "requirements", "design", "tasks" |
+| specName | string | For spec phases | Spec name |
+
+**Usage**:
 ```
-"Get full context for user-authentication spec"
+validate-phase phase:"requirements" specName:"user-auth"
 ```
 
-## Steering Document Tools
+**Returns**: Pass/fail for each check with suggestions.
+
+---
+
+### Build Tools (Ralph Integration)
+
+#### build-spec
+
+Orchestrates autonomous spec implementation.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| specName | string | Yes | Spec to build |
+| startFromTask | string | No | Task ID to start from |
+
+---
+
+#### implement-task-auto
+
+Implements a single task autonomously.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| specName | string | Yes | Spec name |
+| taskId | string | Yes | Task ID |
+
+---
+
+#### verify-implementation
+
+Verifies task implementation meets spec.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| specName | string | Yes | Spec name |
+| taskId | string | Yes | Task ID |
+
+---
+
+## Prompts (9 total)
+
+Prompts generate conversation context. Call them like tools but they return guidance for Claude to act on.
+
+### create-spec
+
+Creates a spec document (requirements, design, or tasks).
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| specName | string | Yes | Spec name in kebab-case |
+| documentType | string | Yes | One of: "requirements", "design", "tasks" |
+| description | string | No | Brief description |
+
+**Usage**:
+```
+create-spec specName:"user-auth" documentType:"requirements"
+create-spec specName:"user-auth" documentType:"design"
+create-spec specName:"user-auth" documentType:"tasks"
+```
+
+---
 
 ### create-steering-doc
 
-**Purpose**: Creates project steering documents (product, tech, structure).
+Creates a steering document.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| docType | string | Yes | Type: "product", "tech", or "structure" |
-| content | string | Yes | Markdown content of the document |
+| docType | string | Yes | Document type (archetype-specific) |
 
-**Usage Example**:
-```typescript
-{
-  docType: "product",
-  content: "# Product Steering\n\n## Vision\nBuild the best..."
-}
+**Usage**:
+```
+create-steering-doc docType:"goals"
+create-steering-doc docType:"approach"
 ```
 
-**Returns**:
-```typescript
-{
-  success: true,
-  message: "Product steering document created",
-  path: ".spec-workflow/steering/product.md"
-}
-```
+---
 
-**Notes**:
-- Creates steering directory if needed
-- Overwrites existing steering documents
-- No approval required for steering docs
-- Should be created before specs
+### implement-task
 
-## Approval System Tools
-
-### request-approval
-
-**Purpose**: Requests user approval for a document.
+Generates implementation guidance for a task.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec |
-| docType | string | Yes | Document type to approve |
-| documentId | string | Yes | Unique ID for tracking |
-| content | string | Yes | Document content for review |
+| specName | string | Yes | Spec name |
+| taskId | string | Yes | Task ID |
 
-**Usage Example**:
-```typescript
-{
-  specName: "user-auth",
-  docType: "requirements",
-  documentId: "user-auth-req-v1",
-  content: "# Requirements\n\n..."
-}
+**Usage**:
+```
+implement-task specName:"user-auth" taskId:"1.2"
 ```
 
-**Returns**:
-```typescript
-{
-  success: true,
-  approvalId: "user-auth-req-v1",
-  message: "Approval requested. Check dashboard to review."
-}
-```
+---
 
-### get-approval-status
+### spec-status
 
-**Purpose**: Checks the approval status of a document.
+Returns formatted spec status.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec |
-| documentId | string | Yes | Document ID to check |
+| specName | string | No | Specific spec or all |
 
-**Returns**:
-```typescript
-{
-  exists: true,
-  status: "pending" | "approved" | "rejected" | "changes-requested",
-  feedback: "Please add more detail about error handling",
-  timestamp: "2024-01-15T10:30:00Z",
-  reviewer: "user"
-}
-```
+---
 
-**Usage Example**:
-```
-"Check approval status for user-auth requirements"
-```
+### inject-spec-workflow-guide
 
-### delete-approval
+Injects workflow guide into conversation context.
 
-**Purpose**: Removes completed, rejected, or needs-revision approval requests to clean up the approval queue. Cannot delete pending approvals.
+**Parameters**: None
+
+---
+
+### inject-steering-guide
+
+Injects steering guide into conversation context.
+
+**Parameters**: None
+
+---
+
+### refresh-tasks
+
+Refreshes tasks.md to align with updated requirements/design.
 
 **Parameters**:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| specName | string | Yes | Name of the spec |
-| documentId | string | Yes | Document ID to remove |
+| specName | string | Yes | Spec to refresh |
 
-**Returns**:
-```typescript
-{
-  success: true,
-  message: "Approval record deleted"
-}
+**Usage**:
+```
+refresh-tasks specName:"user-auth"
 ```
 
-**Usage Example**:
+---
+
+### ralph-validate-phase
+
+Generates Ralph loop prompt for phase validation.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| phase | string | Yes | Phase to validate |
+| specName | string | Yes | Spec name |
+
+---
+
+### ralph-build-spec
+
+Generates Ralph loop prompt for spec building.
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| specName | string | Yes | Spec to build |
+
+---
+
+## Quick Reference
+
+### Common Workflows
+
+**Create and validate requirements**:
 ```
-"Clean up completed approvals for user-auth"
-```
-
-## Tool Integration Patterns
-
-### Sequential Workflow
-
-Tools are designed to work in sequence:
-
-1. `steering-guide` → Learn about steering
-2. `create-steering-doc` → Create steering documents
-3. `spec-workflow-guide` → Learn workflow
-4. `create-spec-doc` → Create requirements
-5. `request-approval` → Request review
-6. `get-approval-status` → Check status
-7. `create-spec-doc` → Create design (after approval)
-8. `manage-tasks` → Track implementation
-
-### Parallel Operations
-
-Some tools can be used simultaneously:
-
-- `spec-list` + `spec-status` → Get overview and details
-- `get-spec-context` + `get-steering-context` → Full project context
-- Multiple `create-spec-doc` → Create multiple specs
-
-### Error Handling
-
-All tools return consistent error structures:
-
-```typescript
-{
-  success: false,
-  error: "Spec not found",
-  details: "No spec named 'invalid-spec' exists",
-  suggestion: "Use spec-list to see available specs"
-}
+create-spec specName:"my-feature" documentType:"requirements"
+validate-phase phase:"requirements" specName:"my-feature"
+approvals action:"request" filePath:".spec-workflow/specs/my-feature/requirements.md" category:"spec" categoryName:"my-feature" type:"document" title:"requirements"
 ```
 
-## Best Practices
-
-### Tool Selection
-
-1. **Information Gathering**:
-   - Use `spec-list` for overview
-   - Use `spec-status` for specific spec
-   - Use `get-spec-context` for implementation
-
-2. **Document Creation**:
-   - Always create requirements first
-   - Wait for approval before design
-   - Create tasks after design approval
-
-3. **Task Management**:
-   - Update status when starting tasks
-   - Mark complete immediately after finishing
-   - Use notes for important context
-
-### Performance Considerations
-
-- **Batch Operations**: Request multiple specs in one conversation
-- **Caching**: Tools cache file reads for performance
-- **Selective Loading**: Use `includeContent: false` for faster status checks
-
-### Security
-
-- **Path Validation**: All paths are validated and sanitized
-- **Project Isolation**: Tools only access project directory
-- **Input Sanitization**: Markdown content is sanitized
-- **No Execution**: Tools never execute code
-
-## Extending Tools
-
-### Custom Tool Development
-
-To add new tools:
-
-1. Create tool module in `src/tools/`
-2. Define parameters schema
-3. Implement handler function
-4. Register with MCP server
-5. Add to exports
-
-Example structure:
-```typescript
-export const customTool = {
-  name: 'custom-tool',
-  description: 'Description',
-  parameters: {
-    // JSON Schema
-  },
-  handler: async (params) => {
-    // Implementation
-  }
-};
+**Check approval and cleanup**:
+```
+approvals action:"status" approvalId:"[id]"
+approvals action:"delete" approvalId:"[id]"
 ```
 
-## Tool Versioning
+**Full spec creation sequence**:
+1. `create-spec specName:"X" documentType:"requirements"`
+2. `validate-phase phase:"requirements" specName:"X"`
+3. `approvals action:"request" ...`
+4. (approve in dashboard)
+5. `approvals action:"delete" ...`
+6. `create-spec specName:"X" documentType:"design"`
+7. ... repeat for design and tasks
 
-Tools maintain backward compatibility:
-
-- Parameter additions are optional
-- Response structures extend, not replace
-- Deprecated features show warnings
-- Migration guides provided
-
-## Related Documentation
-
-- [User Guide](USER-GUIDE.md) - Using tools effectively
-- [Workflow Process](WORKFLOW.md) - Tool usage in workflow
-- [Prompting Guide](PROMPTING-GUIDE.md) - Example tool usage
-- [Development Guide](DEVELOPMENT.md) - Adding new tools
+See [COMMAND-SEQUENCE.md](COMMAND-SEQUENCE.md) for complete workflow with Ralph loops.

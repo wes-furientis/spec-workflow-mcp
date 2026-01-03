@@ -1,365 +1,266 @@
 # User Guide
 
-A comprehensive guide to using Spec Workflow MCP for AI-assisted software development.
+A practical guide to using Spec Workflow MCP for spec-driven development.
 
-## Getting Started
+## What is Spec Workflow MCP?
 
-### What is Spec Workflow MCP?
+An MCP server that provides structured, spec-driven development tools. It helps you:
 
-Spec Workflow MCP is a Model Context Protocol server that provides structured, spec-driven development tools to AI assistants. It helps you:
-
-- Create detailed specifications before coding
+- Create specifications before coding (requirements, design, tasks)
+- Validate specs against quality criteria
+- Manage approvals through a dashboard
 - Track implementation progress
-- Manage approvals and revisions
-- Maintain project documentation
+- Integrate with Ralph Wiggum for autonomous loops
 
-### Basic Workflow
+## Core Concepts
 
-1. **Create a spec** - Define what you want to build
-2. **Review and approve** - Ensure specifications meet requirements
-3. **Implement tasks** - Execute the implementation plan
-4. **Track progress** - Monitor completion status
+### Archetypes
 
-## Creating Specifications
+Projects have an **archetype** that determines which steering documents are required:
 
-### Simple Spec Creation
+| Archetype | Steering Docs | Use Case |
+|-----------|---------------|----------|
+| generic | minimal | Default, simple projects |
+| greenfield | product, tech, structure | New projects from scratch |
+| brownfield | existing-patterns, constraints | Adding to existing codebase |
+| code-library | api-design, versioning | Libraries/packages |
+| research-paper | methodology, literature-review | Academic work |
+| web-app | user-flows, ui-patterns | Web applications |
+| custom | user-defined | Project-specific needs |
 
-Ask your AI assistant to create a spec:
+Set your archetype in the dashboard Settings page.
 
-```
-"Create a spec for user authentication"
-```
+### The Three-Document System
 
-The AI will automatically:
-1. Create a requirements document
-2. Design the technical approach
-3. Break down implementation into tasks
+Each spec has three sequential documents:
 
-### Detailed Spec Creation
+1. **Requirements** - WHAT to build (user stories, acceptance criteria)
+2. **Design** - HOW to build it (architecture, components, data models)
+3. **Tasks** - STEPS to build it (implementation breakdown)
 
-Provide more context for better specifications:
+Each document must be approved before creating the next.
 
-```
-"Create a spec called payment-gateway with the following features:
-- Credit card processing
-- PayPal integration
-- Subscription management
-- Webhook handling for payment events"
-```
+### Validation
 
-### From Existing Documents
+Each phase has validation checks:
 
-Use your existing PRD or design documents:
+- **Requirements**: User story format, acceptance criteria, steering coverage
+- **Design**: Requirements coverage, file references, architecture diagrams
+- **Tasks**: Task structure, _Prompt fields, _Leverage files exist
 
-```
-"Build a spec from @product-requirements.md"
-```
+Use Ralph loops to automatically fix validation failures.
 
-## Managing Specifications
+## Quick Start
 
-### Listing All Specs
+### 1. Initialize Project
+
+In Claude Code with spec-workflow-mcp connected:
 
 ```
-"List all my specs"
+initialize-workflow
 ```
 
-Returns:
-- Spec names
-- Current status
-- Progress percentage
-- Document states
+This creates the `.spec-workflow/` directory structure.
 
-### Checking Spec Status
+### 2. Set Archetype
+
+Open the dashboard and go to Settings. Select your archetype.
+
+### 3. Create Steering Documents
+
+Tell Claude what your project is about:
 
 ```
-"Show me the status of the user-auth spec"
+"Here's my project idea: [description]
+
+Create the steering documents for this project."
 ```
 
-Provides:
-- Requirements approval status
-- Design approval status
-- Task completion progress
-- Detailed task breakdown
+Review and approve each steering document in the dashboard.
 
-### Viewing Spec Documents
+### 4. Create Specifications
 
-Use the dashboard or VSCode extension to:
-- Read requirements documents
-- Review design documents
-- Browse task lists
+```
+create-spec specName:"my-feature" documentType:"requirements"
+```
+
+Then validate with Ralph:
+
+```
+/ralph-wiggum:ralph-loop --max-iterations 10
+```
+
+Prompt:
+```
+Validate the requirements phase for spec "my-feature". Call validate-phase with phase:"requirements" and specName:"my-feature". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>REQUIREMENTS_VALIDATED</promise>
+```
+
+### 5. Request Approval
+
+```
+approvals action:"request" filePath:".spec-workflow/specs/my-feature/requirements.md" category:"spec" categoryName:"my-feature" type:"document" title:"requirements"
+```
+
+### 6. Approve in Dashboard
+
+Go to Approvals page, review the document, click Approve.
+
+### 7. Cleanup and Continue
+
+```
+approvals action:"status" approvalId:"[id]"
+approvals action:"delete" approvalId:"[id]"
+```
+
+Then create design:
+
+```
+create-spec specName:"my-feature" documentType:"design"
+```
+
+Repeat validation → approval → cleanup for design and tasks.
+
+## Complete Workflow Reference
+
+See [COMMAND-SEQUENCE.md](COMMAND-SEQUENCE.md) for the full soup-to-nuts command sequence.
+
+## Working with the Dashboard
+
+### Approvals Page
+
+- View pending approval requests
+- Read document content
+- Add comments/feedback
+- Approve, reject, or request revisions
+
+### Settings Page
+
+- Select project archetype
+- View archetype steering document requirements
+- Configure project settings
+
+### Specs Page
+
+- View all specifications
+- Check document status
 - Track implementation progress
 
-## Working with Tasks
+### Logs Page
 
-### Task Structure
+- View implementation logs
+- See what was done for each task
 
-Tasks are organized hierarchically:
-- **1.0** - Major sections
-  - **1.1** - Subtasks
-  - **1.2** - Subtasks
-    - **1.2.1** - Detailed steps
+## Ralph Wiggum Integration
 
-### Implementing Tasks
+Ralph Wiggum enables autonomous loops for validation and implementation.
 
-#### Method 1: Direct Implementation
-```
-"Implement task 1.2 from the user-auth spec"
-```
-
-#### Method 2: Copy from Dashboard
-1. Open the dashboard
-2. Navigate to your spec
-3. Click "Tasks" tab
-4. Click "Copy Prompt" button next to any task
-5. Paste into your AI conversation
-
-#### Method 3: Batch Implementation
-```
-"Implement all database setup tasks from user-auth spec"
-```
-
-### Task Status
-
-Tasks have three states:
-- ⏳ **Pending** - Not started
-- 🔄 **In Progress** - Currently being worked on
-- ✅ **Completed** - Finished
-
-## Approval Workflow
-
-### Requesting Approval
-
-When documents are ready for review:
-
-1. The AI automatically requests approval
-2. Dashboard shows notification
-3. Review the document
-4. Provide feedback or approve
-
-### Approval Actions
-
-- **Approve** - Accept the document as-is
-- **Request Changes** - Provide feedback for revision
-- **Reject** - Start over with new requirements
-
-### Revision Process
-
-1. Provide specific feedback
-2. AI revises the document
-3. Review updated version
-4. Approve or request further changes
-
-## Bug Workflow
-
-### Reporting Bugs
+### Validation Loops
 
 ```
-"Create a bug report for login failure when using SSO"
+/ralph-wiggum:ralph-loop --max-iterations 10
 ```
 
-Creates:
-- Bug description
-- Steps to reproduce
-- Expected vs actual behavior
-- Priority and severity
+**ALWAYS set `--max-iterations`**. Without it, Ralph loops forever if validation can't pass.
 
-### Bug Resolution
+Recommended limits:
+- Requirements: 10
+- Design: 10
+- Tasks: 15-20
 
-```
-"Create a fix for bug #123 in user-auth spec"
-```
+### What Ralph Does
 
-Generates:
-- Root cause analysis
-- Fix implementation plan
-- Testing requirements
-- Deployment steps
+1. Calls `validate-phase` to check the document
+2. If validation fails, fixes the issues
+3. Re-validates
+4. Repeats until pass or max iterations
+5. Outputs completion promise
 
-## Template System
+## Key Commands Reference
 
-### Using Templates
+### Prompts (create things)
 
-Spec Workflow includes templates for:
-- Requirements documents
-- Design documents
-- Task lists
-- Bug reports
-- Steering documents
+| Command | Purpose |
+|---------|---------|
+| `create-spec specName:"X" documentType:"requirements"` | Create requirements |
+| `create-spec specName:"X" documentType:"design"` | Create design |
+| `create-spec specName:"X" documentType:"tasks"` | Create tasks |
+| `create-steering-doc docType:"goals"` | Create steering doc |
+| `implement-task specName:"X" taskId:"1.2"` | Get implementation guidance |
+| `refresh-tasks specName:"X"` | Refresh tasks after spec changes |
 
-### Custom Templates
+### Tools (check/manage things)
 
-Create your own templates in `.spec-workflow/templates/`:
+| Command | Purpose |
+|---------|---------|
+| `spec-status specName:"X"` | Check spec status |
+| `validate-phase phase:"requirements" specName:"X"` | Validate a phase |
+| `approvals action:"request" ...` | Request approval |
+| `approvals action:"status" approvalId:"X"` | Check approval status |
+| `approvals action:"delete" approvalId:"X"` | Delete approval |
+| `log-implementation specName:"X" taskId:"1.2" summary:"..."` | Log implementation |
+| `manage-archetype action:"list"` | List archetypes |
 
-```markdown
-# Custom Feature Template
+### Ralph Loops
 
-## Overview
-[Feature description]
-
-## User Stories
-[User stories]
-
-## Technical Requirements
-[Technical details]
-```
-
-## Advanced Features
-
-### Steering Documents
-
-Create high-level project guidance:
-
-```
-"Create steering documents for my e-commerce project"
-```
-
-Generates:
-- **Product steering** - Vision and goals
-- **Technical steering** - Architecture decisions
-- **Structure steering** - Project organization
-
-### Archive System
-
-Manage completed specs:
-- Move finished specs to archive
-- Keep active workspace clean
-- Access archived specs anytime
-- Restore specs when needed
-
-### Multi-Language Support
-
-Change interface language:
-
-1. **Dashboard**: Settings → Language
-2. **VSCode Extension**: Extension Settings → Language
-3. **Config file**: `lang = "ja"` (or other language code)
+| Phase | Command |
+|-------|---------|
+| Requirements | `/ralph-wiggum:ralph-loop --max-iterations 10` |
+| Design | `/ralph-wiggum:ralph-loop --max-iterations 10` |
+| Tasks | `/ralph-wiggum:ralph-loop --max-iterations 15` |
 
 ## Best Practices
 
-### 1. Start with Steering Documents
+### 1. Set Archetype First
 
-Before creating specs:
+Before creating any documents, set your archetype in the dashboard. This determines which steering documents you need.
+
+### 2. Complete Phases in Order
+
+Requirements → Design → Tasks. Don't skip ahead.
+
+### 3. Use Ralph for Validation
+
+Don't manually fix validation issues one by one. Let Ralph loop handle it.
+
+### 4. Always Set Max Iterations
+
+Never run Ralph without `--max-iterations`. Infinite loops waste time and money.
+
+### 5. Verify Approval Status
+
+Don't trust verbal confirmation. Always call `approvals action:"status"` to verify.
+
+### 6. Clean Up Approvals
+
+After approval, delete the approval record before proceeding:
 ```
-"Create steering documents to guide the project"
+approvals action:"delete" approvalId:"[id]"
 ```
 
-### 2. Be Specific in Requirements
+### 7. Use the Dashboard
 
-Good:
-```
-"Create a spec for user authentication with:
-- Email/password login
-- OAuth2 (Google, GitHub)
-- 2FA support
-- Password reset flow"
-```
+The dashboard provides visual feedback that's easier than parsing tool output.
 
-Not ideal:
-```
-"Create a login spec"
-```
+## Troubleshooting
 
-### 3. Review Before Implementation
+### "Unknown slash command: /ralph-loop"
 
-Always review and approve:
-1. Requirements document
-2. Design document
-3. Task breakdown
+Use the full plugin name: `/ralph-wiggum:ralph-loop`
 
-### 4. Implement Incrementally
+### Approval not registering in dashboard
 
-- Complete tasks in order
-- Test after each major section
-- Update task status regularly
+Check if WebSocket is connected. Restart the dashboard if needed.
 
-### 5. Use the Dashboard
+### Validation keeps failing
 
-The dashboard provides:
-- Visual progress tracking
-- Easy document navigation
-- Quick approval actions
-- Real-time updates
+Check if steering documents exist and match your archetype. Some validation checks require steering docs to compare against.
 
-## Common Workflows
+### Ralph loops forever
 
-### Feature Development
-
-1. Create spec: `"Create spec for shopping-cart feature"`
-2. Review requirements in dashboard
-3. Approve or request changes
-4. Review design document
-5. Approve design
-6. Implement tasks sequentially
-7. Track progress in dashboard
-
-### Bug Fixing
-
-1. Report bug: `"Create bug report for checkout error"`
-2. Analyze: `"Analyze root cause of bug #45"`
-3. Plan fix: `"Create fix plan for bug #45"`
-4. Implement: `"Implement the fix"`
-5. Verify: `"Create test plan for bug #45 fix"`
-
-### Refactoring
-
-1. Create spec: `"Create spec for database optimization"`
-2. Document current state
-3. Design improvements
-4. Plan migration steps
-5. Implement incrementally
-6. Verify each step
-
-## Tips and Tricks
-
-### Efficient Task Management
-
-- Use task grouping for related items
-- Copy prompts from dashboard for accuracy
-- Mark tasks complete immediately after finishing
-
-### Document Management
-
-- Keep requirements concise but complete
-- Include acceptance criteria
-- Add technical constraints in design
-- Reference external documents when needed
-
-### Collaboration
-
-- Use approval comments for feedback
-- Share dashboard URL with team
-- Export documents for external review
-- Track changes through revision history
-
-## Integration with AI Assistants
-
-### Contextual Awareness
-
-The AI assistant automatically:
-- Knows your project structure
-- Understands spec relationships
-- Tracks implementation progress
-- Maintains consistency
-
-### Natural Language Commands
-
-Speak naturally:
-- "What specs do I have?"
-- "Show me what's left to do"
-- "Start working on the next task"
-- "Update the design for better performance"
-
-### Continuous Workflow
-
-The AI maintains context between sessions:
-- Resume where you left off
-- Reference previous decisions
-- Build on existing work
-- Maintain project coherence
+You forgot `--max-iterations`. Kill the process and restart with the flag.
 
 ## Related Documentation
 
-- [Workflow Process](WORKFLOW.md) - Detailed workflow guide
-- [Prompting Guide](PROMPTING-GUIDE.md) - Example prompts
-- [Interfaces Guide](INTERFACES.md) - Dashboard and extension details
-- [Tools Reference](TOOLS-REFERENCE.md) - Complete tool documentation
+- [COMMAND-SEQUENCE.md](COMMAND-SEQUENCE.md) - Complete command sequence
+- [TOOLS-REFERENCE.md](TOOLS-REFERENCE.md) - All tools and prompts
+- [WORKFLOW.md](WORKFLOW.md) - Workflow concepts
