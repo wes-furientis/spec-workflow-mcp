@@ -34,6 +34,7 @@
     ]
   },
   "guidance": {
+    "outputType": "code",
     "workflowEmphasis": [
       "Understand existing patterns before making changes",
       "Document migration paths and compatibility concerns",

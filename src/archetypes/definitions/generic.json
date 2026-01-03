@@ -19,6 +19,7 @@
     ]
   },
   "guidance": {
+    "outputType": "code",
     "workflowEmphasis": [
       "Follow the standard spec workflow phases",
       "Document requirements before design",

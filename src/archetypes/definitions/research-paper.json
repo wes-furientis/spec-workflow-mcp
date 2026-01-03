@@ -48,6 +48,7 @@
     ]
   },
   "guidance": {
+    "outputType": "document",
     "workflowEmphasis": [
       "Establish clear research questions and hypotheses",
       "Document methodology rigorously",

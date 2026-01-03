@@ -41,9 +41,19 @@ export interface ArchetypeSteering {
 }
 
 /**
+ * What type of output this archetype produces
+ * - "code": Software development - output is working code
+ * - "document": Document creation - output is a document (planning doc, proposal, etc.)
+ * - "artifact-set": Multiple artifacts - output includes docs, spreadsheets, slides, etc.
+ */
+export type ArchetypeOutputType = 'code' | 'document' | 'artifact-set';
+
+/**
  * Guidance configuration for AI agents
  */
 export interface ArchetypeGuidance {
+  /** What type of output this archetype produces (default: "code") */
+  outputType?: ArchetypeOutputType;
   /** Key points to emphasize in workflow guidance */
   workflowEmphasis: string[];
   /** What "documentation" means for this project type */

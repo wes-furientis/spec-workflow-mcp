@@ -35,6 +35,7 @@
     ]
   },
   "guidance": {
+    "outputType": "code",
     "workflowEmphasis": [
       "Design clean, intuitive public APIs",
       "Plan for semantic versioning",

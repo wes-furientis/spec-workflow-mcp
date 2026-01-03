@@ -35,6 +35,7 @@
     ]
   },
   "guidance": {
+    "outputType": "code",
     "workflowEmphasis": [
       "Focus on establishing solid architectural foundations",
       "Document technology choices and their rationale",
