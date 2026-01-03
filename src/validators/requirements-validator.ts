@@ -322,47 +322,73 @@ async function checkSteeringCoverage(
     ? Math.round((totalCovered / totalItems) * 100)
     : 100;
 
-  // Add per-document coverage checks
+  // Add per-document coverage checks - ALWAYS show what's missing
   for (const report of reports) {
-    if (report.coveragePercent < 30 && report.totalItems > 3) {
-      // Low coverage for this steering doc
-      const topUncovered = report.uncoveredItems.slice(0, 3)
-        .map(item => `"${item.content.substring(0, 50)}${item.content.length > 50 ? '...' : ''}"`)
-        .join(', ');
+    if (report.totalItems === 0) continue;
 
+    // Format uncovered items for display
+    const uncoveredDisplay = report.uncoveredItems.length > 0
+      ? report.uncoveredItems.slice(0, 5)
+          .map(item => `"${item.content.substring(0, 60)}${item.content.length > 60 ? '...' : ''}"`)
+          .join('\n    • ')
+      : null;
+
+    if (report.coveragePercent < 50) {
+      // Low coverage - fail with specific gaps
       checks.push(failCheck(
         `steering-coverage-${report.source}`,
         `Requirements cover ${report.source}.md content`,
         `Only ${report.coveragePercent}% coverage (${report.coveredItems}/${report.totalItems} items)`,
         'warning',
-        `Missing items from ${report.source}.md: ${topUncovered}`,
+        uncoveredDisplay
+          ? `Missing from ${report.source}.md:\n    • ${uncoveredDisplay}`
+          : undefined,
         `steering/${report.source}.md`
       ));
-    } else if (report.totalItems > 0) {
+    } else if (report.uncoveredItems.length > 0) {
+      // Good coverage but still show what's missing - PASS with info
       checks.push(passCheck(
         `steering-coverage-${report.source}`,
-        `Requirements cover ${report.source}.md (${report.coveragePercent}% - ${report.coveredItems}/${report.totalItems} items)`
+        `${report.source}.md: ${report.coveragePercent}% (${report.coveredItems}/${report.totalItems}). ` +
+        `NOT COVERED (${report.uncoveredItems.length}):\n    • ${uncoveredDisplay}`
+      ));
+    } else {
+      // 100% coverage
+      checks.push(passCheck(
+        `steering-coverage-${report.source}`,
+        `${report.source}.md: 100% coverage (${report.totalItems}/${report.totalItems} items)`
       ));
     }
   }
 
-  // Add overall coverage check
-  if (overallCoverage < 40 && totalItems > 10) {
-    const sampleUncovered = allUncoveredItems.slice(0, 5)
-      .map(u => `[${u.doc}] ${u.item.content.substring(0, 40)}...`)
-      .join('\n  - ');
+  // Add overall coverage check - ALWAYS show gaps
+  const overallUncoveredDisplay = allUncoveredItems.length > 0
+    ? allUncoveredItems.slice(0, 8)
+        .map(u => `[${u.doc}] ${u.item.content.substring(0, 50)}...`)
+        .join('\n    • ')
+    : null;
 
+  if (overallCoverage < 50) {
     checks.push(failCheck(
       'steering-coverage-overall',
       'Requirements have good overall steering coverage',
       `Only ${overallCoverage}% overall coverage across steering docs`,
       'warning',
-      `Sample uncovered items:\n  - ${sampleUncovered}`
+      overallUncoveredDisplay
+        ? `All uncovered items:\n    • ${overallUncoveredDisplay}`
+        : undefined
+    ));
+  } else if (allUncoveredItems.length > 0) {
+    // Pass but show what's missing
+    checks.push(passCheck(
+      'steering-coverage-overall',
+      `Overall: ${overallCoverage}% (${totalCovered}/${totalItems}). ` +
+      `NOT COVERED (${allUncoveredItems.length} items):\n    • ${overallUncoveredDisplay}`
     ));
   } else {
     checks.push(passCheck(
       'steering-coverage-overall',
-      `Overall steering coverage: ${overallCoverage}% (${totalCovered}/${totalItems} items)`
+      `Overall steering coverage: 100% (${totalItems}/${totalItems} items)`
     ));
   }
 

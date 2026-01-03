@@ -165,7 +165,7 @@ function checkFileReferencesExist(
 }
 
 /**
- * Check if design covers all requirements
+ * Check if design covers all requirements - ALWAYS show which are missing
  */
 function checkRequirementsCoverage(
   projectPath: string,
@@ -205,30 +205,50 @@ function checkRequirementsCoverage(
     }
   }
 
-  // Check how many are referenced in design
-  let coveredCount = 0;
+  // Check which are referenced in design
+  const coveredReqs: string[] = [];
+  const uncoveredReqs: string[] = [];
+
   for (const num of requirementNumbers) {
     if (designContent.includes(num)) {
-      coveredCount++;
+      coveredReqs.push(num);
+    } else {
+      uncoveredReqs.push(num);
     }
   }
 
   const totalReqs = requirementNumbers.size;
-  const coveragePercent = totalReqs > 0 ? Math.round((coveredCount / totalReqs) * 100) : 100;
+  const coveragePercent = totalReqs > 0 ? Math.round((coveredReqs.length / totalReqs) * 100) : 100;
+
+  // Format uncovered requirements for display
+  const uncoveredDisplay = uncoveredReqs.length > 0
+    ? uncoveredReqs.slice(0, 10).join(', ')
+    : null;
 
   if (totalReqs > 0 && coveragePercent < 50) {
     return failCheck(
       'requirements-coverage',
       'Design addresses all requirements',
-      `Only ${coveragePercent}% of requirements referenced in design (${coveredCount}/${totalReqs})`,
+      `Only ${coveragePercent}% coverage (${coveredReqs.length}/${totalReqs})`,
       'warning',
-      'Ensure design explicitly addresses each requirement number'
+      uncoveredDisplay
+        ? `Requirements NOT addressed in design: ${uncoveredDisplay}`
+        : 'Ensure design explicitly addresses each requirement number'
+    );
+  }
+
+  if (uncoveredReqs.length > 0) {
+    // Pass but show what's missing
+    return passCheck(
+      'requirements-coverage',
+      `Requirements: ${coveragePercent}% (${coveredReqs.length}/${totalReqs}). ` +
+      `NOT ADDRESSED: ${uncoveredDisplay}`
     );
   }
 
   return passCheck(
     'requirements-coverage',
-    `Design references ${coveragePercent}% of requirements`
+    `Requirements: 100% coverage (${totalReqs}/${totalReqs})`
   );
 }
 
