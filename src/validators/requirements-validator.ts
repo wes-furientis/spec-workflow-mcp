@@ -10,6 +10,12 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import archetypeRegistry from '../archetypes/archetype-registry.js';
 import {
+  extractAllSteeringContent,
+  generateCoverageReport,
+  CoverageReport,
+  SteeringContentItem,
+} from './steering-content-extractor.js';
+import {
   ValidationCheck,
   ValidationOptions,
   DocumentValidationResult,
@@ -225,33 +231,42 @@ async function getProjectArchetype(projectPath: string): Promise<string> {
 }
 
 /**
- * Check if requirements reference steering documents
- * ARCHETYPE-AWARE: Dynamically checks based on project's actual steering docs
+ * Check if requirements cover content from steering documents
+ * ARCHETYPE-AWARE: Extracts key content from each steering doc and checks coverage
+ *
+ * This goes line-by-line through steering docs to find:
+ * - Headers (## Section)
+ * - Bullet points (- item)
+ * - Numbered items (1. item)
+ * - Key statements (sentences with important keywords)
+ *
+ * Then checks if each item is represented in requirements.
  */
-async function checkSteeringAlignment(
+async function checkSteeringCoverage(
   projectPath: string,
   specName: string
-): Promise<ValidationCheck> {
+): Promise<ValidationCheck[]> {
   const docPath = join(projectPath, '.spec-workflow', 'specs', specName, 'requirements.md');
   const steeringPath = join(projectPath, '.spec-workflow', 'steering');
+  const checks: ValidationCheck[] = [];
 
   if (!existsSync(docPath)) {
-    return failCheck(
-      'steering-alignment',
-      'Requirements align with steering documents',
+    checks.push(failCheck(
+      'steering-coverage',
+      'Requirements cover steering content',
       'requirements.md does not exist',
       'error'
-    );
+    ));
+    return checks;
   }
 
-  const content = readFileSync(docPath, 'utf-8');
-  const contentLower = content.toLowerCase();
+  const requirementsContent = readFileSync(docPath, 'utf-8');
 
   // Get the project's archetype and its steering docs
   const archetype = await getProjectArchetype(projectPath);
   const steeringConfig = await archetypeRegistry.getSteeringDocsForProject(archetype, projectPath);
 
-  // Build dynamic patterns based on actual steering docs
+  // Build list of steering docs
   const allSteeringDocs = [
     ...steeringConfig.required,
     ...steeringConfig.optional,
@@ -267,70 +282,91 @@ async function checkSteeringAlignment(
   }
 
   if (existingSteeringDocs.length === 0) {
-    return passCheck(
-      'steering-alignment',
-      'Requirements alignment (no steering docs to check against)'
-    );
+    checks.push(passCheck(
+      'steering-coverage',
+      'Steering coverage (no steering docs to check against)'
+    ));
+    return checks;
   }
 
-  // Check for references to steering docs in multiple ways
-  let referenceCount = 0;
-  const referencedDocs: string[] = [];
+  // Extract content from all steering docs
+  const extractions = extractAllSteeringContent(projectPath, existingSteeringDocs);
 
-  for (const docName of existingSteeringDocs) {
-    // Check for various reference patterns:
-    // 1. Direct file reference: goals.md, approach.md
-    // 2. Section heading reference: ## Goals, ## Approach
-    // 3. Inline reference: "as defined in goals", "per the approach"
-    // 4. Concept reference: "the goals", "our approach", "project milestones"
+  if (extractions.length === 0) {
+    checks.push(passCheck(
+      'steering-coverage',
+      'Steering coverage (no extractable content found)'
+    ));
+    return checks;
+  }
 
-    const patterns = [
-      new RegExp(`${docName}\\.md`, 'i'),                           // goals.md
-      new RegExp(`##\\s*${docName}`, 'i'),                          // ## Goals
-      new RegExp(`#\\s*${docName}`, 'i'),                           // # Goals
-      new RegExp(`\\b${docName}\\b`, 'i'),                          // goals (word boundary)
-      new RegExp(`(the|our|project)\\s+${docName}`, 'i'),           // the goals, our approach
-      new RegExp(`(see|per|from|in)\\s+(the\\s+)?${docName}`, 'i'), // see goals, per the approach
-    ];
+  // Generate coverage report for each steering doc
+  const reports: CoverageReport[] = [];
+  let totalItems = 0;
+  let totalCovered = 0;
+  const allUncoveredItems: Array<{ doc: string; item: SteeringContentItem }> = [];
 
-    for (const pattern of patterns) {
-      if (contentLower.match(pattern)) {
-        referenceCount++;
-        if (!referencedDocs.includes(docName)) {
-          referencedDocs.push(docName);
-        }
-        break; // Count each doc only once
-      }
+  for (const extraction of extractions) {
+    const report = generateCoverageReport(extraction, requirementsContent, 2);
+    reports.push(report);
+    totalItems += report.totalItems;
+    totalCovered += report.coveredItems;
+
+    // Collect uncovered items (limit to most important)
+    for (const item of report.uncoveredItems.slice(0, 5)) {
+      allUncoveredItems.push({ doc: extraction.document, item });
     }
   }
 
-  // Calculate coverage
-  const coveragePercent = Math.round((referencedDocs.length / existingSteeringDocs.length) * 100);
+  const overallCoverage = totalItems > 0
+    ? Math.round((totalCovered / totalItems) * 100)
+    : 100;
 
-  if (referencedDocs.length === 0) {
-    return failCheck(
-      'steering-alignment',
-      'Requirements align with steering documents',
-      `No references to steering documents found. Expected references to: ${existingSteeringDocs.join(', ')}`,
-      'warning',
-      `Add references to your steering docs (${existingSteeringDocs.slice(0, 3).join(', ')}...) to show traceability`
-    );
+  // Add per-document coverage checks
+  for (const report of reports) {
+    if (report.coveragePercent < 30 && report.totalItems > 3) {
+      // Low coverage for this steering doc
+      const topUncovered = report.uncoveredItems.slice(0, 3)
+        .map(item => `"${item.content.substring(0, 50)}${item.content.length > 50 ? '...' : ''}"`)
+        .join(', ');
+
+      checks.push(failCheck(
+        `steering-coverage-${report.source}`,
+        `Requirements cover ${report.source}.md content`,
+        `Only ${report.coveragePercent}% coverage (${report.coveredItems}/${report.totalItems} items)`,
+        'warning',
+        `Missing items from ${report.source}.md: ${topUncovered}`,
+        `steering/${report.source}.md`
+      ));
+    } else if (report.totalItems > 0) {
+      checks.push(passCheck(
+        `steering-coverage-${report.source}`,
+        `Requirements cover ${report.source}.md (${report.coveragePercent}% - ${report.coveredItems}/${report.totalItems} items)`
+      ));
+    }
   }
 
-  if (coveragePercent < 50 && existingSteeringDocs.length > 2) {
-    return failCheck(
-      'steering-alignment',
-      'Requirements align with steering documents',
-      `Only ${coveragePercent}% of steering docs referenced (${referencedDocs.join(', ')})`,
+  // Add overall coverage check
+  if (overallCoverage < 40 && totalItems > 10) {
+    const sampleUncovered = allUncoveredItems.slice(0, 5)
+      .map(u => `[${u.doc}] ${u.item.content.substring(0, 40)}...`)
+      .join('\n  - ');
+
+    checks.push(failCheck(
+      'steering-coverage-overall',
+      'Requirements have good overall steering coverage',
+      `Only ${overallCoverage}% overall coverage across steering docs`,
       'warning',
-      `Consider referencing: ${existingSteeringDocs.filter(d => !referencedDocs.includes(d)).join(', ')}`
-    );
+      `Sample uncovered items:\n  - ${sampleUncovered}`
+    ));
+  } else {
+    checks.push(passCheck(
+      'steering-coverage-overall',
+      `Overall steering coverage: ${overallCoverage}% (${totalCovered}/${totalItems} items)`
+    ));
   }
 
-  return passCheck(
-    'steering-alignment',
-    `Requirements reference ${referencedDocs.length}/${existingSteeringDocs.length} steering docs (${referencedDocs.join(', ')})`
-  );
+  return checks;
 }
 
 /**
@@ -420,7 +456,7 @@ export async function validateRequirements(
     allChecks.push(checkUserStoryFormat(projectPath, specName));
     allChecks.push(checkAcceptanceCriteriaFormat(projectPath, specName));
     allChecks.push(checkNonFunctionalRequirements(projectPath, specName));
-    allChecks.push(await checkSteeringAlignment(projectPath, specName));
+    allChecks.push(...await checkSteeringCoverage(projectPath, specName));
     allChecks.push(checkRequirementsNumbered(projectPath, specName));
   }
 

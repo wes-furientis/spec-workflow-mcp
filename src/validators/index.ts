@@ -8,6 +8,7 @@ export { validateSteering } from './steering-validator.js';
 export { validateRequirements } from './requirements-validator.js';
 export { validateDesign } from './design-validator.js';
 export { validateTasks } from './tasks-validator.js';
+export * from './steering-content-extractor.js';
 
 import { ValidationOptions, PhaseValidationResult } from './types.js';
 import { validateSteering } from './steering-validator.js';
