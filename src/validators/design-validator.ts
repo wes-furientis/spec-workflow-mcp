@@ -1,10 +1,14 @@
 /**
  * Design Document Validator
  * Validates design.md against requirements and existing code
+ *
+ * ARCHETYPE-AWARE: Checks for references to the project's actual
+ * steering documents, not just requirements.
  */
 
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
 import {
   ValidationCheck,
   ValidationOptions,
@@ -400,6 +404,112 @@ function checkComponentInterfaces(
 }
 
 /**
+ * Get the current archetype for a project
+ */
+async function getProjectArchetype(projectPath: string): Promise<string> {
+  const configPath = join(projectPath, '.spec-workflow', 'config.json');
+
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return config.archetype || 'generic';
+    } catch {
+      return 'generic';
+    }
+  }
+
+  return 'generic';
+}
+
+/**
+ * Check if design references steering documents
+ * ARCHETYPE-AWARE: Dynamically checks based on project's actual steering docs
+ */
+async function checkSteeringAlignment(
+  projectPath: string,
+  specName: string
+): Promise<ValidationCheck> {
+  const docPath = join(projectPath, '.spec-workflow', 'specs', specName, 'design.md');
+  const steeringPath = join(projectPath, '.spec-workflow', 'steering');
+
+  if (!existsSync(docPath)) {
+    return failCheck(
+      'design-steering-alignment',
+      'Design aligns with steering documents',
+      'design.md does not exist',
+      'error'
+    );
+  }
+
+  const content = readFileSync(docPath, 'utf-8');
+  const contentLower = content.toLowerCase();
+
+  // Get the project's archetype and its steering docs
+  const archetype = await getProjectArchetype(projectPath);
+  const steeringConfig = await archetypeRegistry.getSteeringDocsForProject(archetype, projectPath);
+
+  // Build list of actual steering docs
+  const allSteeringDocs = [
+    ...steeringConfig.required,
+    ...steeringConfig.optional,
+    ...steeringConfig.custom.map(c => c.name),
+  ];
+
+  // Find which steering docs actually exist
+  const existingSteeringDocs: string[] = [];
+  for (const docName of allSteeringDocs) {
+    if (existsSync(join(steeringPath, `${docName}.md`))) {
+      existingSteeringDocs.push(docName);
+    }
+  }
+
+  if (existingSteeringDocs.length === 0) {
+    return passCheck(
+      'design-steering-alignment',
+      'Design alignment (no steering docs to check against)'
+    );
+  }
+
+  // Check for references to steering docs
+  const referencedDocs: string[] = [];
+
+  for (const docName of existingSteeringDocs) {
+    const patterns = [
+      new RegExp(`${docName}\\.md`, 'i'),
+      new RegExp(`##\\s*${docName}`, 'i'),
+      new RegExp(`\\b${docName}\\b`, 'i'),
+      new RegExp(`(the|our|project)\\s+${docName}`, 'i'),
+      new RegExp(`(see|per|from|in)\\s+(the\\s+)?${docName}`, 'i'),
+    ];
+
+    for (const pattern of patterns) {
+      if (contentLower.match(pattern)) {
+        if (!referencedDocs.includes(docName)) {
+          referencedDocs.push(docName);
+        }
+        break;
+      }
+    }
+  }
+
+  // Design should reference at least some steering docs for context
+  if (referencedDocs.length === 0) {
+    return failCheck(
+      'design-steering-alignment',
+      'Design aligns with steering documents',
+      `No references to steering documents found (${existingSteeringDocs.slice(0, 3).join(', ')}...)`,
+      'warning',
+      'Consider referencing steering docs to show how design decisions align with project goals'
+    );
+  }
+
+  return passCheck(
+    'design-steering-alignment',
+    `Design references ${referencedDocs.length} steering docs (${referencedDocs.join(', ')})`
+  );
+}
+
+/**
  * Validate design document
  */
 export async function validateDesign(
@@ -438,6 +548,7 @@ export async function validateDesign(
     allChecks.push(checkArchitectureDiagrams(projectPath, specName));
     allChecks.push(checkDataModels(projectPath, specName));
     allChecks.push(checkComponentInterfaces(projectPath, specName));
+    allChecks.push(await checkSteeringAlignment(projectPath, specName));
   }
 
   const document: DocumentValidationResult = {

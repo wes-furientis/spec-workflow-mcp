@@ -1,10 +1,14 @@
 /**
  * Requirements Document Validator
  * Validates requirements.md against steering documents and quality criteria
+ *
+ * ARCHETYPE-AWARE: Dynamically checks for references to the project's
+ * actual steering documents, not hardcoded defaults.
  */
 
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import archetypeRegistry from '../archetypes/archetype-registry.js';
 import {
   ValidationCheck,
   ValidationOptions,
@@ -203,12 +207,31 @@ function checkNonFunctionalRequirements(
 }
 
 /**
- * Check if requirements reference steering documents
+ * Get the current archetype for a project
  */
-function checkSteeringAlignment(
+async function getProjectArchetype(projectPath: string): Promise<string> {
+  const configPath = join(projectPath, '.spec-workflow', 'config.json');
+
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return config.archetype || 'generic';
+    } catch {
+      return 'generic';
+    }
+  }
+
+  return 'generic';
+}
+
+/**
+ * Check if requirements reference steering documents
+ * ARCHETYPE-AWARE: Dynamically checks based on project's actual steering docs
+ */
+async function checkSteeringAlignment(
   projectPath: string,
   specName: string
-): ValidationCheck {
+): Promise<ValidationCheck> {
   const docPath = join(projectPath, '.spec-workflow', 'specs', specName, 'requirements.md');
   const steeringPath = join(projectPath, '.spec-workflow', 'steering');
 
@@ -221,42 +244,92 @@ function checkSteeringAlignment(
     );
   }
 
-  const content = readFileSync(docPath, 'utf-8').toLowerCase();
+  const content = readFileSync(docPath, 'utf-8');
+  const contentLower = content.toLowerCase();
 
-  // Check for references to steering concepts
-  const steeringReferences = [
-    /product\s+vision/i,
-    /product\.md/i,
-    /tech\.md/i,
-    /technical\s+constraints/i,
-    /architecture/i,
-    /structure\.md/i,
+  // Get the project's archetype and its steering docs
+  const archetype = await getProjectArchetype(projectPath);
+  const steeringConfig = await archetypeRegistry.getSteeringDocsForProject(archetype, projectPath);
+
+  // Build dynamic patterns based on actual steering docs
+  const allSteeringDocs = [
+    ...steeringConfig.required,
+    ...steeringConfig.optional,
+    ...steeringConfig.custom.map(c => c.name),
   ];
 
-  let referenceCount = 0;
-  for (const pattern of steeringReferences) {
-    if (content.match(pattern)) {
-      referenceCount++;
+  // Find which steering docs actually exist
+  const existingSteeringDocs: string[] = [];
+  for (const docName of allSteeringDocs) {
+    if (existsSync(join(steeringPath, `${docName}.md`))) {
+      existingSteeringDocs.push(docName);
     }
   }
 
-  // Check if steering documents exist
-  const hasProductMd = existsSync(join(steeringPath, 'product.md'));
-  const hasTechMd = existsSync(join(steeringPath, 'tech.md'));
+  if (existingSteeringDocs.length === 0) {
+    return passCheck(
+      'steering-alignment',
+      'Requirements alignment (no steering docs to check against)'
+    );
+  }
 
-  if ((hasProductMd || hasTechMd) && referenceCount === 0) {
+  // Check for references to steering docs in multiple ways
+  let referenceCount = 0;
+  const referencedDocs: string[] = [];
+
+  for (const docName of existingSteeringDocs) {
+    // Check for various reference patterns:
+    // 1. Direct file reference: goals.md, approach.md
+    // 2. Section heading reference: ## Goals, ## Approach
+    // 3. Inline reference: "as defined in goals", "per the approach"
+    // 4. Concept reference: "the goals", "our approach", "project milestones"
+
+    const patterns = [
+      new RegExp(`${docName}\\.md`, 'i'),                           // goals.md
+      new RegExp(`##\\s*${docName}`, 'i'),                          // ## Goals
+      new RegExp(`#\\s*${docName}`, 'i'),                           // # Goals
+      new RegExp(`\\b${docName}\\b`, 'i'),                          // goals (word boundary)
+      new RegExp(`(the|our|project)\\s+${docName}`, 'i'),           // the goals, our approach
+      new RegExp(`(see|per|from|in)\\s+(the\\s+)?${docName}`, 'i'), // see goals, per the approach
+    ];
+
+    for (const pattern of patterns) {
+      if (contentLower.match(pattern)) {
+        referenceCount++;
+        if (!referencedDocs.includes(docName)) {
+          referencedDocs.push(docName);
+        }
+        break; // Count each doc only once
+      }
+    }
+  }
+
+  // Calculate coverage
+  const coveragePercent = Math.round((referencedDocs.length / existingSteeringDocs.length) * 100);
+
+  if (referencedDocs.length === 0) {
     return failCheck(
       'steering-alignment',
       'Requirements align with steering documents',
-      'No references to steering documents found in requirements',
+      `No references to steering documents found. Expected references to: ${existingSteeringDocs.join(', ')}`,
       'warning',
-      'Add section referencing product vision or technical constraints from steering docs'
+      `Add references to your steering docs (${existingSteeringDocs.slice(0, 3).join(', ')}...) to show traceability`
+    );
+  }
+
+  if (coveragePercent < 50 && existingSteeringDocs.length > 2) {
+    return failCheck(
+      'steering-alignment',
+      'Requirements align with steering documents',
+      `Only ${coveragePercent}% of steering docs referenced (${referencedDocs.join(', ')})`,
+      'warning',
+      `Consider referencing: ${existingSteeringDocs.filter(d => !referencedDocs.includes(d)).join(', ')}`
     );
   }
 
   return passCheck(
     'steering-alignment',
-    'Requirements reference steering documents'
+    `Requirements reference ${referencedDocs.length}/${existingSteeringDocs.length} steering docs (${referencedDocs.join(', ')})`
   );
 }
 
@@ -347,7 +420,7 @@ export async function validateRequirements(
     allChecks.push(checkUserStoryFormat(projectPath, specName));
     allChecks.push(checkAcceptanceCriteriaFormat(projectPath, specName));
     allChecks.push(checkNonFunctionalRequirements(projectPath, specName));
-    allChecks.push(checkSteeringAlignment(projectPath, specName));
+    allChecks.push(await checkSteeringAlignment(projectPath, specName));
     allChecks.push(checkRequirementsNumbered(projectPath, specName));
   }
 
