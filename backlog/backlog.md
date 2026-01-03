@@ -112,7 +112,21 @@ Historical items before 2025-12-31 have date-only timestamps.
 - **Effort**: High
 - **Added**: 2025-12-30
 
-### 17. Configurable Steering Document Validation
+### 17. Automatic Approval Verification via Ralph Loop
+- **Description**: Implement automatic Ralph loop that verifies approval status before allowing phase transitions. Should trigger automatically (not require manual `/ralph-loop` invocation).
+- **Rationale**: Current system relies on agents voluntarily checking approval status, but agents will trust verbal user statements like "approval submitted, proceed to design" without verifying. This bypasses the approval gate entirely. Need enforcement at the system level, not just guidance.
+- **Problem observed**: User said "I'm pressing approve" but dashboard WebSocket was disconnected. Agent proceeded to design phase without verifying the approval actually registered in the system.
+- **Potential scope**:
+  - Claude Code hook that triggers on phase document creation (e.g., creating design.md triggers requirements approval check)
+  - Hook calls `check-phase-approval` tool and blocks if `canProceed: false`
+  - Alternative: Modify spec-workflow-guide to refuse design/tasks guidance unless previous phase verified approved
+  - Ralph loop prompt: "Before proceeding, verify approval status. If not approved, STOP and wait."
+  - Auto-trigger mechanism (hook-based, not manual `/ralph-loop`)
+- **Key requirement**: Must be AUTOMATIC - agent should not be able to bypass by simply not calling the verification
+- **Effort**: Medium
+- **Added**: 2026-01-02T16:45:00Z
+
+### 18. Configurable Steering Document Validation
 - **Description**: Make the steering document validator configurable so users can select which checks to run and which to skip.
 - **Rationale**: Current validator runs all checks unconditionally, which causes problems when:
   - Users have intentional TBDs or soft goals that get flagged as "vague"
