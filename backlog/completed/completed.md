@@ -209,3 +209,27 @@ All completed items track timestamps in ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ):
   - Archives moved to `.archive` subdirectory
   - `log-implementation` handler now auto-manages after each entry
   - Returns summary counts in response for context efficiency
+
+### #27 - Custom Archetype Creation
+- **Added**: 2025-12-31
+- **Completed**: 2025-12-31T17:30:00Z
+- **Description**: Allow users to create custom archetypes beyond the built-in ones
+- **User Requirements**:
+  - Storage: Project-level only (`.spec-workflow/archetypes/`)
+  - Inheritance: Extend existing archetypes with selective overrides
+  - Creation UX: Both dashboard UI form AND direct JSON file editing
+- **Implementation**:
+  - New types: `CustomArchetypeDefinition`, `CustomSteeringConfig` in `types.ts`
+  - New `src/archetypes/archetype-merger.ts`: Inheritance resolution with removal syntax (`-docname`)
+  - New `src/archetypes/custom-archetype-loader.ts`: Load/save/delete from `.spec-workflow/archetypes/`
+  - Updated `archetype-registry.ts`: Project-aware methods (`getWithProject`, `getAllWithProject`, `isCustomArchetype`)
+  - New API endpoints in `multi-server.ts`:
+    - `GET/POST/PUT/DELETE /api/projects/:projectId/custom-archetypes[/:name]`
+    - `GET /api/projects/:projectId/all-archetypes` (built-in + custom)
+    - `POST /api/projects/:projectId/custom-archetypes/validate`
+  - New `src/dashboard_frontend/.../ArchetypesPage.tsx`: Full management UI with form and JSON editor modes
+  - Updated `SettingsPage.tsx`: Now loads custom archetypes via all-archetypes endpoint
+  - Added sidebar navigation for `/archetypes` page
+  - New MCP tool: `manage-archetype` in `src/tools/manage-archetype.ts`
+    - Actions: list, inspect, create, update, delete, validate
+- **Plan document**: `docs/plans/custom-archetype-creation-plan.md`
