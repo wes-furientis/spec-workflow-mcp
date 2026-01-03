@@ -112,22 +112,21 @@ Historical items before 2025-12-31 have date-only timestamps.
 - **Effort**: High
 - **Added**: 2025-12-30
 
-### 27. Custom Archetype Creation
-- **Description**: Allow users to create custom archetypes beyond the built-in ones (greenfield, brownfield, web-app, code-library, research-paper, generic).
-- **Rationale**: Different organizations and project types have unique documentation needs, steering doc requirements, and workflow patterns. Custom archetypes let users codify their specific practices.
+### 17. Configurable Steering Document Validation
+- **Description**: Make the steering document validator configurable so users can select which checks to run and which to skip.
+- **Rationale**: Current validator runs all checks unconditionally, which causes problems when:
+  - Users have intentional TBDs or soft goals that get flagged as "vague"
+  - Placeholder patterns like `TBD` are flagged even when intentional
+  - Different projects have different quality standards
+  - Ralph auto-fix loops can't distinguish between intentional and accidental issues
 - **Potential scope**:
-  - Dashboard UI for creating/editing archetypes
-  - Define required vs optional steering docs
-  - Custom steering doc templates (beyond the standard set)
-  - Archetype-specific planning guidance and prompts
-  - Export/import archetypes for sharing across projects/teams
-  - Inherit from existing archetypes and override specific settings
-  - Store custom archetypes in `.spec-workflow/archetypes/` or user-level config
-- **Examples**:
-  - "data-pipeline" archetype with data-flow.md, schema.md, ETL-patterns.md
-  - "mobile-app" archetype with platform-specific docs, release-process.md
-  - "microservice" archetype with API-contracts.md, deployment.md, observability.md
-- **Effort**: Medium-High
-- **Added**: 2025-12-31
+  - Add `skip` parameter to `validate-phase` tool (e.g., `skip:["placeholder-count", "measurable-goals"]`)
+  - Add validation config section to `.spec-workflow/config.json`
+  - Interactive mode that asks which checks to run before validating
+  - Per-archetype default check configuration
+  - Dashboard UI for configuring validation settings
+- **Effort**: Low-Medium
+- **Added**: 2026-01-02
+
 
 
