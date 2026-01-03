@@ -68,7 +68,7 @@ Claude creates `.spec-workflow/specs/my-feature/requirements.md`
 ### 2.2 Validate with Ralph
 
 ```
-/ralph-wiggum:ralph-loop
+/ralph-wiggum:ralph-loop --max-iterations 10
 ```
 
 When prompted, enter:
@@ -79,7 +79,9 @@ If validation fails, fix the issues in requirements.md and re-validate.
 When validation passes, output: <promise>REQUIREMENTS_VALIDATED</promise>
 ```
 
-Ralph loops until validation passes.
+Ralph loops until validation passes or hits max iterations.
+
+**WARNING:** Always set `--max-iterations`. Without it, Ralph will loop forever if validation never passes.
 
 ### 2.3 Request Approval
 
@@ -123,7 +125,7 @@ Claude creates `.spec-workflow/specs/my-feature/design.md`
 ### 3.2 Validate with Ralph
 
 ```
-/ralph-wiggum:ralph-loop
+/ralph-wiggum:ralph-loop --max-iterations 10
 ```
 
 When prompted:
@@ -133,6 +135,8 @@ Call validate-phase with phase:"design" and specName:"my-feature".
 If validation fails, fix the issues in design.md and re-validate.
 When validation passes, output: <promise>DESIGN_VALIDATED</promise>
 ```
+
+**WARNING:** Always set `--max-iterations`.
 
 ### 3.3 Request Approval
 
@@ -166,7 +170,7 @@ Claude creates `.spec-workflow/specs/my-feature/tasks.md`
 ### 4.2 Validate with Ralph
 
 ```
-/ralph-wiggum:ralph-loop
+/ralph-wiggum:ralph-loop --max-iterations 15
 ```
 
 When prompted:
@@ -176,6 +180,8 @@ Call validate-phase with phase:"tasks" and specName:"my-feature".
 If validation fails, fix the issues in tasks.md and re-validate.
 When validation passes, output: <promise>TASKS_VALIDATED</promise>
 ```
+
+**WARNING:** Always set `--max-iterations`. Tasks validation may need more iterations (15+) due to complex task structures.
 
 ### 4.3 Request Approval
 
@@ -223,20 +229,51 @@ approvals action:"delete" approvalId:"[id]"
 
 ## Quick Reference: Ralph Validation Prompts
 
+### Max Iterations Guide
+
+| Phase | Recommended Max | Why |
+|-------|-----------------|-----|
+| Requirements | 10 | Usually straightforward fixes |
+| Design | 10 | Similar complexity to requirements |
+| Tasks | 15-20 | More validation checks, complex structure |
+
+**NEVER run without `--max-iterations`.** If you do, Ralph will loop forever when validation can't pass (e.g., missing steering docs, unresolvable errors).
+
+### Copy-Paste Commands
+
 **Requirements:**
+```
+/ralph-wiggum:ralph-loop --max-iterations 10
+```
+Prompt:
 ```
 Validate the requirements phase for spec "SPEC_NAME". Call validate-phase with phase:"requirements" and specName:"SPEC_NAME". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>REQUIREMENTS_VALIDATED</promise>
 ```
 
 **Design:**
 ```
+/ralph-wiggum:ralph-loop --max-iterations 10
+```
+Prompt:
+```
 Validate the design phase for spec "SPEC_NAME". Call validate-phase with phase:"design" and specName:"SPEC_NAME". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>DESIGN_VALIDATED</promise>
 ```
 
 **Tasks:**
 ```
+/ralph-wiggum:ralph-loop --max-iterations 15
+```
+Prompt:
+```
 Validate the tasks phase for spec "SPEC_NAME". Call validate-phase with phase:"tasks" and specName:"SPEC_NAME". If validation fails, fix the issues and re-validate. When validation passes, output: <promise>TASKS_VALIDATED</promise>
 ```
+
+### What Happens at Max Iterations?
+
+Ralph stops and outputs what it has. You'll see:
+- Which validations passed
+- Which are still failing
+- You decide: fix manually, adjust max, or accept current state
 
 ---
 
