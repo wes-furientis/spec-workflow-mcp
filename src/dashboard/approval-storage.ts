@@ -97,8 +97,13 @@ export interface ApprovalRequest {
     reason?: string;
   }[];
   metadata?: Record<string, any>;
-  category: 'spec' | 'steering';
-  categoryName: string; // spec or steering document name
+  category: 'spec' | 'steering' | 'document';
+  categoryName: string; // spec, steering, or document name
+  documentMetadata?: {
+    filename: string;
+    type: 'docx';
+    pdfPath: string;
+  };
 }
 
 export class ApprovalStorage extends EventEmitter {
@@ -189,12 +194,20 @@ export class ApprovalStorage extends EventEmitter {
   async createApproval(
     title: string,
     filePath: string,
-    category: 'spec' | 'steering',
+    category: 'spec' | 'steering' | 'document',
     categoryName: string,
     type: 'document' | 'action' = 'document',
     metadata?: Record<string, any>
   ): Promise<string> {
     const id = this.generateId();
+
+    // Extract documentMetadata if provided in metadata
+    const documentMetadata = metadata?.documentMetadata as ApprovalRequest['documentMetadata'] | undefined;
+    const cleanMetadata = metadata ? { ...metadata } : undefined;
+    if (cleanMetadata) {
+      delete cleanMetadata.documentMetadata;
+    }
+
     const approval: ApprovalRequest = {
       id,
       title,
@@ -202,9 +215,10 @@ export class ApprovalStorage extends EventEmitter {
       type,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      metadata,
+      metadata: cleanMetadata,
       category,
-      categoryName
+      categoryName,
+      documentMetadata
     };
 
     // Create category directory if it doesn't exist

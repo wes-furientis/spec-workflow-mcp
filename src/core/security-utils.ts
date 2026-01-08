@@ -264,9 +264,10 @@ export function createSecurityHeadersMiddleware(port?: number) {
     // CSP for dashboard
     // Note: cdn.jsdelivr.net is required for highlight.js stylesheets used by the MDX editor
     // connect-src allows WebSocket connections to the dashboard on the actual port
+    // unpkg.com and blob: are required for PDF.js worker used by react-pdf
     reply.header(
       'Content-Security-Policy',
-      `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' ws://localhost:${actualPort} ws://127.0.0.1:${actualPort};`
+      `default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:${actualPort} ws://127.0.0.1:${actualPort}; worker-src 'self' blob: https://unpkg.com;`
     );
   };
 }

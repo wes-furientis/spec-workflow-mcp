@@ -19,6 +19,13 @@ export type Approval = {
   filePath?: string;
   content?: string;
   createdAt?: string;
+  category?: 'spec' | 'steering' | 'document';
+  categoryName?: string;
+  documentMetadata?: {
+    filename: string;
+    type: 'docx';
+    pdfPath: string;
+  };
 };
 
 export type ProjectInfo = {
@@ -117,6 +124,11 @@ type ApiActionsContextType = {
   getImplementationLogs: (specName: string, query?: { taskId?: string; search?: string }) => Promise<{ entries: ImplementationLogEntry[] }>;
   getImplementationLogStats: (specName: string, taskId: string) => Promise<any>;
   getChangelog: (version: string) => Promise<{ content: string }>;
+  // Document review methods
+  listDocuments: () => Promise<{ documents: Array<{ filename: string; lastModified: string; size: number; hasPdf: boolean }> }>;
+  convertDocument: (filename: string) => Promise<{ success: boolean; pdfFilename: string; pdfPath: string; message: string }>;
+  createDocumentApproval: (filename: string, title?: string, description?: string) => Promise<{ success: boolean; approvalId: string; approval: Approval }>;
+  getDocumentPdfUrl: (filename: string) => string;
 };
 
 const ApiDataContext = createContext<ApiDataContextType | undefined>(undefined);
@@ -285,6 +297,10 @@ export function ApiProvider({ initial, projectId, children }: ApiProviderProps) 
         getImplementationLogs: async () => ({ entries: [] }),
         getImplementationLogStats: async () => ({}),
         getChangelog: async () => ({ content: '' }),
+        listDocuments: async () => ({ documents: [] }),
+        convertDocument: async () => ({ success: false, pdfFilename: '', pdfPath: '', message: 'No project selected' }),
+        createDocumentApproval: async () => ({ success: false, approvalId: '', approval: {} as Approval }),
+        getDocumentPdfUrl: () => '',
       };
     }
 
@@ -325,6 +341,25 @@ export function ApiProvider({ initial, projectId, children }: ApiProviderProps) 
       },
       getImplementationLogStats: (specName: string, taskId: string) => getJson(`${prefix}/specs/${encodeURIComponent(specName)}/implementation-log/task/${encodeURIComponent(taskId)}/stats`),
       getChangelog: (version: string) => getJson(`${prefix}/changelog/${encodeURIComponent(version)}`),
+      // Document review methods
+      listDocuments: () => getJson(`${prefix}/documents`),
+      convertDocument: async (filename: string) => {
+        const res = await fetch(`${prefix}/documents/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+        return res.json();
+      },
+      createDocumentApproval: async (filename: string, title?: string, description?: string) => {
+        const res = await fetch(`${prefix}/documents/${encodeURIComponent(filename)}/approval`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description })
+        });
+        return res.json();
+      },
+      getDocumentPdfUrl: (filename: string) => `${prefix}/documents/pdf/${encodeURIComponent(filename.replace('.docx', '.pdf'))}`,
     };
   }, [projectId, reloadAll]);
 

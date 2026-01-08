@@ -15,6 +15,8 @@
   ],
   "scripts": {
     "build": "npm run validate:i18n && npm run clean && tsc && npm run build:dashboard && npm run copy-static",
+    "dashboard": "node dist/index.js --dashboard",
+    "dashboard:status": "node -e \"import('./dist/core/dashboard-session.js').then(m => new m.DashboardSessionManager().getDashboardSession().then(s => console.log(s ? 'Dashboard running at ' + s.url + ' (PID: ' + s.pid + ')' : 'Dashboard not running')))\"",
     "copy-static": "node scripts/copy-static.cjs",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
@@ -69,6 +71,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.7.3",
+    "react-pdf": "^10.3.0",
     "react-router-dom": "^6.26.2",
     "simple-git": "^3.28.0",
     "tailwind-merge": "^3.3.1",

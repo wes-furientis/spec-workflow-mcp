@@ -331,6 +331,29 @@ async function main() {
       console.error(`Starting Spec Workflow MCP Server for project: ${projectPath}`);
       console.error(`Working directory: ${process.cwd()}`);
 
+      // Auto-start dashboard if not running
+      const sessionManager = new DashboardSessionManager();
+      const existingSession = await sessionManager.getDashboardSession();
+      let dashboardServer: MultiProjectDashboardServer | null = null;
+
+      if (!existingSession) {
+        console.error(`No dashboard running, starting one automatically...`);
+        dashboardServer = new MultiProjectDashboardServer({
+          autoOpen: true,
+          port: port || DEFAULT_DASHBOARD_PORT,
+        });
+        try {
+          const dashboardUrl = await dashboardServer.start();
+          console.error(`Dashboard started at: ${dashboardUrl}`);
+        } catch (error: any) {
+          console.error(`Warning: Failed to start dashboard: ${error.message}`);
+          console.error(`Continuing without dashboard...`);
+          dashboardServer = null;
+        }
+      } else {
+        console.error(`Dashboard already running at: ${existingSession.url}`);
+      }
+
       const server = new SpecWorkflowMCPServer();
 
       await server.initialize(projectPath, lang);
@@ -338,11 +361,18 @@ async function main() {
       // Handle graceful shutdown
       process.on('SIGINT', async () => {
         await server.stop();
+        if (dashboardServer) {
+          console.error('\nShutting down dashboard...');
+          await dashboardServer.stop();
+        }
         process.exit(0);
       });
 
       process.on('SIGTERM', async () => {
         await server.stop();
+        if (dashboardServer) {
+          await dashboardServer.stop();
+        }
         process.exit(0);
       });
     }

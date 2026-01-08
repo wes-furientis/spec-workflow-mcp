@@ -5,6 +5,10 @@ import fastifyCors from '@fastify/cors';
 import { join, dirname, basename, resolve } from 'path';
 import { readFile } from 'fs/promises';
 import { promises as fs } from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 import { fileURLToPath } from 'url';
 import open from 'open';
 import { WebSocket } from 'ws';
@@ -27,6 +31,18 @@ import { SecurityConfig } from '../types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Resolve public directory - handle both dev (tsx from src/) and production (node from dist/)
+function getPublicDir(): string {
+  const srcPublic = join(__dirname, 'public');
+  const distPublic = join(__dirname, '..', '..', 'dist', 'dashboard', 'public');
+
+  // Check if we're running from src/ (dev mode with tsx)
+  if (__dirname.includes('/src/dashboard')) {
+    return distPublic;
+  }
+  return srcPublic;
+}
 
 interface WebSocketConnection {
   socket: WebSocket;
@@ -163,9 +179,22 @@ export class MultiProjectDashboardServer {
     }
 
     // Register plugins
+    const publicDir = getPublicDir();
     await this.app.register(fastifyStatic, {
-      root: join(__dirname, 'public'),
+      root: publicDir,
       prefix: '/',
+      index: ['index.html'],
+      wildcard: false,
+    });
+
+    // SPA fallback - serve index.html for all non-API, non-file routes
+    this.app.setNotFoundHandler(async (request, reply) => {
+      // Don't serve index.html for API routes or WebSocket
+      if (request.url.startsWith('/api/') || request.url.startsWith('/ws')) {
+        return reply.code(404).send({ error: 'Not Found' });
+      }
+      // Serve index.html for SPA routing
+      return reply.sendFile('index.html');
     });
 
     await this.app.register(fastifyWebsocket);
@@ -1176,6 +1205,203 @@ export class MultiProjectDashboardServer {
         return stats;
       } catch (error: any) {
         return reply.code(500).send({ error: error.message });
+      }
+    });
+
+    // ==========================================
+    // Document Review Endpoints (docx → PDF)
+    // ==========================================
+
+    // List all docx files in the project's docx folder
+    this.app.get('/api/projects/:projectId/documents', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const project = this.projectManager.getProject(projectId);
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      const docxDir = join(project.projectPath, 'docx');
+      try {
+        await fs.access(docxDir);
+        const files = await fs.readdir(docxDir);
+        const docxFiles = files.filter(f => f.endsWith('.docx'));
+
+        // Get file stats for each docx file
+        const documents = await Promise.all(docxFiles.map(async (filename) => {
+          const filePath = join(docxDir, filename);
+          const stats = await fs.stat(filePath);
+          // Check if PDF exists
+          const pdfDir = join(project.projectPath, '.spec-workflow', 'pdfs');
+          const pdfPath = join(pdfDir, filename.replace('.docx', '.pdf'));
+          let hasPdf = false;
+          try {
+            await fs.access(pdfPath);
+            hasPdf = true;
+          } catch {
+            // PDF doesn't exist
+          }
+          return {
+            filename,
+            lastModified: stats.mtime.toISOString(),
+            size: stats.size,
+            hasPdf
+          };
+        }));
+
+        return { documents };
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          return { documents: [] };
+        }
+        return reply.code(500).send({ error: `Failed to list documents: ${error.message}` });
+      }
+    });
+
+    // Convert docx to PDF using LibreOffice
+    this.app.post('/api/projects/:projectId/documents/convert', async (request, reply) => {
+      const { projectId } = request.params as { projectId: string };
+      const { filename } = request.body as { filename: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      if (!filename || !filename.endsWith('.docx')) {
+        return reply.code(400).send({ error: 'Invalid filename. Must be a .docx file' });
+      }
+
+      const docxPath = join(project.projectPath, 'docx', filename);
+      const pdfDir = join(project.projectPath, '.spec-workflow', 'pdfs');
+
+      try {
+        // Verify docx file exists
+        await fs.access(docxPath);
+
+        // Create PDF output directory
+        await fs.mkdir(pdfDir, { recursive: true });
+
+        // Run unoconv for high-fidelity PDF conversion
+        const pdfFilename = filename.replace('.docx', '.pdf');
+        const pdfPath = join(pdfDir, pdfFilename);
+
+        // unoconv options for better fidelity:
+        // -f pdf: output format
+        // -e FilterName=writer_pdf_Export: use Writer's PDF export filter
+        // -e ExportFormFields=false: don't export form fields
+        // -e EmbedStandardFonts=true: embed standard fonts for consistency
+        // -e IsSkipEmptyPages=false: preserve all pages
+        // -o: output file path
+        const command = `unoconv -f pdf -e FilterName=writer_pdf_Export -e ExportFormFields=false -e EmbedStandardFonts=true -e IsSkipEmptyPages=false -o "${pdfPath}" "${docxPath}"`;
+
+        try {
+          const { stdout, stderr } = await execAsync(command, { timeout: 120000 });
+
+          // Verify PDF was created
+          await fs.access(pdfPath);
+
+          return {
+            success: true,
+            pdfFilename,
+            pdfPath: `/api/projects/${projectId}/documents/pdf/${pdfFilename}`,
+            message: 'Conversion successful'
+          };
+        } catch (execError: any) {
+          // Check if unoconv is installed
+          if (execError.code === 127 || execError.message.includes('not found') || execError.message.includes('unoconv')) {
+            return reply.code(500).send({
+              error: 'unoconv is not installed. Install with: sudo apt install unoconv'
+            });
+          }
+          return reply.code(500).send({
+            error: `unoconv conversion failed: ${execError.message}`
+          });
+        }
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          return reply.code(404).send({ error: `Document not found: ${filename}` });
+        }
+        return reply.code(500).send({ error: `Conversion failed: ${error.message}` });
+      }
+    });
+
+    // Serve PDF file
+    this.app.get('/api/projects/:projectId/documents/pdf/:filename', async (request, reply) => {
+      const { projectId, filename } = request.params as { projectId: string; filename: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      if (!filename.endsWith('.pdf')) {
+        return reply.code(400).send({ error: 'Invalid filename. Must be a .pdf file' });
+      }
+
+      const pdfPath = join(project.projectPath, '.spec-workflow', 'pdfs', filename);
+
+      try {
+        const pdfBuffer = await fs.readFile(pdfPath);
+        return reply
+          .header('Content-Type', 'application/pdf')
+          .header('Content-Disposition', `inline; filename="${filename}"`)
+          .send(pdfBuffer);
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          return reply.code(404).send({ error: `PDF not found: ${filename}` });
+        }
+        return reply.code(500).send({ error: `Failed to serve PDF: ${error.message}` });
+      }
+    });
+
+    // Create document approval request
+    this.app.post('/api/projects/:projectId/documents/:filename/approval', async (request, reply) => {
+      const { projectId, filename } = request.params as { projectId: string; filename: string };
+      const { title, description } = request.body as { title?: string; description?: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      if (!filename.endsWith('.docx')) {
+        return reply.code(400).send({ error: 'Invalid filename. Must be a .docx file' });
+      }
+
+      const docxPath = join(project.projectPath, 'docx', filename);
+
+      try {
+        // Verify docx file exists
+        await fs.access(docxPath);
+
+        // Create approval request using the proper method
+        const docName = filename.replace('.docx', '');
+        const pdfPath = `/api/projects/${projectId}/documents/pdf/${docName}.pdf`;
+
+        const approvalId = await project.approvalStorage.createApproval(
+          title || `Review: ${filename}`,
+          `docx/${filename}`,
+          'document',
+          docName,
+          'document',
+          {
+            description: description || `Document review requested for ${filename}`,
+            documentMetadata: {
+              filename,
+              type: 'docx',
+              pdfPath
+            }
+          }
+        );
+
+        const approval = await project.approvalStorage.getApproval(approvalId);
+
+        return { success: true, approvalId, approval };
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          return reply.code(404).send({ error: `Document not found: ${filename}` });
+        }
+        return reply.code(500).send({ error: `Failed to create approval: ${error.message}` });
       }
     });
   }
