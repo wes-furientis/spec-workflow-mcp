@@ -129,6 +129,7 @@ type ApiActionsContextType = {
   convertDocument: (filename: string) => Promise<{ success: boolean; pdfFilename: string; pdfPath: string; message: string }>;
   createDocumentApproval: (filename: string, title?: string, description?: string) => Promise<{ success: boolean; approvalId: string; approval: Approval }>;
   getDocumentPdfUrl: (filename: string) => string;
+  getDocumentDocxUrl: (filename: string) => string;
 };
 
 const ApiDataContext = createContext<ApiDataContextType | undefined>(undefined);
@@ -301,6 +302,7 @@ export function ApiProvider({ initial, projectId, children }: ApiProviderProps) 
         convertDocument: async () => ({ success: false, pdfFilename: '', pdfPath: '', message: 'No project selected' }),
         createDocumentApproval: async () => ({ success: false, approvalId: '', approval: {} as Approval }),
         getDocumentPdfUrl: () => '',
+        getDocumentDocxUrl: () => '',
       };
     }
 
@@ -360,6 +362,7 @@ export function ApiProvider({ initial, projectId, children }: ApiProviderProps) 
         return res.json();
       },
       getDocumentPdfUrl: (filename: string) => `${prefix}/documents/pdf/${encodeURIComponent(filename.replace('.docx', '.pdf'))}`,
+      getDocumentDocxUrl: (filename: string) => `${prefix}/documents/docx/${encodeURIComponent(filename)}`,
     };
   }, [projectId, reloadAll]);
 

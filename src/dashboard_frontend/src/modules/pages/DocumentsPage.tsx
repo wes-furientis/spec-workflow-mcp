@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi, Approval } from '../api/api';
-import { PDFAnnotator, PDFComment } from '../approvals/PDFAnnotator';
-import { TextInputModal } from '../modals/TextInputModal';
+import { DocxViewer, DocxComment } from '../approvals/DocxViewer';
 import { AlertModal } from '../modals/AlertModal';
 import { useTranslation } from 'react-i18next';
 
@@ -31,17 +30,11 @@ function formatDate(dateStr: string): string {
 
 function DocumentItem({
   doc,
-  onConvert,
   onReview,
-  converting
 }: {
   doc: DocumentInfo;
-  onConvert: (filename: string) => void;
   onReview: (filename: string) => void;
-  converting: string | null;
 }) {
-  const isConverting = converting === doc.filename;
-
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -60,55 +53,22 @@ function DocumentItem({
             <span>{formatFileSize(doc.size)}</span>
             <span className="hidden sm:inline">•</span>
             <span>{formatDate(doc.lastModified)}</span>
-            {doc.hasPdf && (
-              <>
-                <span className="hidden sm:inline">•</span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  PDF Ready
-                </span>
-              </>
-            )}
           </div>
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        {!doc.hasPdf ? (
-          <button
-            onClick={() => onConvert(doc.filename)}
-            disabled={isConverting}
-            className="btn bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-50 flex items-center gap-2"
-          >
-            {isConverting ? (
-              <>
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Converting...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Convert to PDF
-              </>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={() => onReview(doc.filename)}
-            className="btn bg-green-600 hover:bg-green-700 text-white text-sm flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Review PDF
-          </button>
-        )}
+        <button
+          onClick={() => onReview(doc.filename)}
+          className="btn bg-green-600 hover:bg-green-700 text-white text-sm flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Review Document
+        </button>
       </div>
     </div>
   );
@@ -116,16 +76,16 @@ function DocumentItem({
 
 function DocumentReviewModal({
   filename,
-  pdfUrl,
+  docxUrl,
   onClose,
   onSubmitRevision
 }: {
   filename: string;
-  pdfUrl: string;
+  docxUrl: string;
   onClose: () => void;
-  onSubmitRevision: (comments: PDFComment[]) => void;
+  onSubmitRevision: (comments: DocxComment[]) => void;
 }) {
-  const [comments, setComments] = useState<PDFComment[]>([]);
+  const [comments, setComments] = useState<DocxComment[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -182,10 +142,10 @@ function DocumentReviewModal({
           </div>
         </div>
 
-        {/* PDF Annotator */}
+        {/* Document Viewer */}
         <div className="flex-1 overflow-auto p-4">
-          <PDFAnnotator
-            pdfUrl={pdfUrl}
+          <DocxViewer
+            docxUrl={docxUrl}
             comments={comments}
             onCommentsChange={setComments}
           />
@@ -197,12 +157,11 @@ function DocumentReviewModal({
 
 export function DocumentsPage() {
   const { t } = useTranslation();
-  const { listDocuments, convertDocument, getDocumentPdfUrl, createDocumentApproval, approvalsAction } = useApi();
+  const { listDocuments, getDocumentDocxUrl, createDocumentApproval, approvalsAction } = useApi();
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [converting, setConverting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reviewingDoc, setReviewingDoc] = useState<{ filename: string; pdfUrl: string } | null>(null);
+  const [reviewingDoc, setReviewingDoc] = useState<{ filename: string; docxUrl: string } | null>(null);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; variant: 'info' | 'success' | 'warning' | 'error' }>({
     isOpen: false,
     title: '',
@@ -227,40 +186,12 @@ export function DocumentsPage() {
     loadDocuments();
   }, [loadDocuments]);
 
-  const handleConvert = async (filename: string) => {
-    setConverting(filename);
-    try {
-      const result = await convertDocument(filename);
-      if (result.success) {
-        // Reload documents to update hasPdf status
-        await loadDocuments();
-        setAlertModal({
-          isOpen: true,
-          title: 'Conversion Complete',
-          message: `${filename} has been converted to PDF successfully.`,
-          variant: 'success'
-        });
-      } else {
-        throw new Error(result.message || 'Conversion failed');
-      }
-    } catch (err: any) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Conversion Failed',
-        message: err.message || 'Failed to convert document',
-        variant: 'error'
-      });
-    } finally {
-      setConverting(null);
-    }
-  };
-
   const handleReview = (filename: string) => {
-    const pdfUrl = getDocumentPdfUrl(filename);
-    setReviewingDoc({ filename, pdfUrl });
+    const docxUrl = getDocumentDocxUrl(filename);
+    setReviewingDoc({ filename, docxUrl });
   };
 
-  const handleSubmitRevision = async (comments: PDFComment[]) => {
+  const handleSubmitRevision = async (comments: DocxComment[]) => {
     if (!reviewingDoc) return;
 
     try {
@@ -287,8 +218,7 @@ export function DocumentsPage() {
           summary += 'Specific Text Comments:\n';
           selections.forEach((c, i) => {
             const text = (c.selectedText || '');
-            const page = c.pageNumber ? `[Page ${c.pageNumber}] ` : '';
-            summary += `${i + 1}. ${page}"${text.substring(0, 50)}${text.length > 50 ? '...' : ''}": ${c.comment}\n`;
+            summary += `${i + 1}. "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}": ${c.comment}\n`;
           });
         }
 
@@ -393,9 +323,7 @@ export function DocumentsPage() {
             <DocumentItem
               key={doc.filename}
               doc={doc}
-              onConvert={handleConvert}
               onReview={handleReview}
-              converting={converting}
             />
           ))}
         </div>
@@ -405,7 +333,7 @@ export function DocumentsPage() {
       {reviewingDoc && (
         <DocumentReviewModal
           filename={reviewingDoc.filename}
-          pdfUrl={reviewingDoc.pdfUrl}
+          docxUrl={reviewingDoc.docxUrl}
           onClose={() => setReviewingDoc(null)}
           onSubmitRevision={handleSubmitRevision}
         />

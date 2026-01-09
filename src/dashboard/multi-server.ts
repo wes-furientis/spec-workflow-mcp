@@ -1354,6 +1354,36 @@ export class MultiProjectDashboardServer {
       }
     });
 
+    // Serve raw DOCX file for direct browser rendering
+    this.app.get('/api/projects/:projectId/documents/docx/:filename', async (request, reply) => {
+      const { projectId, filename } = request.params as { projectId: string; filename: string };
+      const project = this.projectManager.getProject(projectId);
+
+      if (!project) {
+        return reply.code(404).send({ error: 'Project not found' });
+      }
+
+      if (!filename.endsWith('.docx')) {
+        return reply.code(400).send({ error: 'Invalid filename. Must be a .docx file' });
+      }
+
+      const docxPath = join(project.projectPath, 'docx', filename);
+
+      try {
+        const docxBuffer = await fs.readFile(docxPath);
+        return reply
+          .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+          .header('Content-Disposition', `inline; filename="${filename}"`)
+          .header('Access-Control-Expose-Headers', 'Content-Disposition')
+          .send(docxBuffer);
+      } catch (error: any) {
+        if (error.code === 'ENOENT') {
+          return reply.code(404).send({ error: `Document not found: ${filename}` });
+        }
+        return reply.code(500).send({ error: `Failed to serve document: ${error.message}` });
+      }
+    });
+
     // Create document approval request
     this.app.post('/api/projects/:projectId/documents/:filename/approval', async (request, reply) => {
       const { projectId, filename } = request.params as { projectId: string; filename: string };
