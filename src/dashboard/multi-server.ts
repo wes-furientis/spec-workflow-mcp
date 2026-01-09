@@ -184,13 +184,17 @@ export class MultiProjectDashboardServer {
       root: publicDir,
       prefix: '/',
       index: ['index.html'],
-      wildcard: false,
     });
 
     // SPA fallback - serve index.html for all non-API, non-file routes
     this.app.setNotFoundHandler(async (request, reply) => {
-      // Don't serve index.html for API routes or WebSocket
-      if (request.url.startsWith('/api/') || request.url.startsWith('/ws')) {
+      // Don't serve index.html for API routes, WebSocket, or static assets
+      if (
+        request.url.startsWith('/api/') ||
+        request.url.startsWith('/ws') ||
+        request.url.startsWith('/assets/') ||
+        request.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)
+      ) {
         return reply.code(404).send({ error: 'Not Found' });
       }
       // Serve index.html for SPA routing

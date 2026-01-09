@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { renderAsync, defaultOptions } from 'docx-preview';
+
+// Dynamically import docx-preview to avoid SSR/startup issues
+let renderAsync: any = null;
+let defaultOptions: any = {};
 
 export interface DocxComment {
   type: 'general' | 'selection';
@@ -38,6 +41,13 @@ export function DocxViewer({ docxUrl, comments, onCommentsChange }: DocxViewerPr
       setError(null);
 
       try {
+        // Dynamically import docx-preview only when needed
+        if (!renderAsync) {
+          const docxPreview = await import('docx-preview');
+          renderAsync = docxPreview.renderAsync;
+          defaultOptions = docxPreview.defaultOptions || {};
+        }
+
         const response = await fetch(docxUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch document: ${response.statusText}`);
